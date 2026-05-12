@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Classroom attendance and student profile management" />
+  <meta name="theme-color" content="#6c63ff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ClassTrack" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- Splash / icons for iOS -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="32x32"  href="icons/icon-96.png" />
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <title>ClassTrack</title>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Top Bar ─────────────────────────────────────────── -->
+  <header id="topbar">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="3" width="20" height="18" rx="3" stroke="currentColor" stroke-width="2"/>
+        <path d="M8 9h8M8 12h5M8 15h6" stroke="#6c63ff" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="18" cy="17" r="4" fill="#6c63ff"/>
+        <path d="M16.5 17l1 1 2-2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Class<span>Track</span>
+    </div>
+    <span id="topbar-title" class="text-muted" style="font-size:13px;flex:1;text-align:center"></span>
+    <div id="sync-badge" class="online">
+      <div class="dot"></div>
+      <span>Online</span>
+    </div>
+    <button id="btn-install">Install</button>
+  </header>
+
+  <!-- ── Main ────────────────────────────────────────────── -->
+  <main>
+
+    <!-- DASHBOARD ──────────────────────────────────────── -->
+    <section id="screen-dashboard" class="screen active">
+      <div style="margin-bottom:20px">
+        <div class="display" style="margin-bottom:4px">Good day! 👋</div>
+        <div id="dash-date" class="text-muted" style="font-size:14px"></div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-val" id="dash-total">0</div>
+          <div class="stat-label">Students</div>
+        </div>
+        <div class="stat-card present-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-val" id="dash-present">0</div>
+          <div class="stat-label">Present Today</div>
+        </div>
+        <div class="stat-card absent-card">
+          <div class="stat-icon">❌</div>
+          <div class="stat-val" id="dash-absent">0</div>
+          <div class="stat-label">Absent Today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⏰</div>
+          <div class="stat-val" id="dash-late">0</div>
+          <div class="stat-label">Late Today</div>
+        </div>
+      </div>
+
+      <!-- Sync status -->
+      <div class="card card-sm flex items-center gap-3" style="margin-bottom:16px">
+        <span style="font-size:20px">🔄</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">Sync Status</div>
+          <div id="dash-pending" class="tag" style="margin-top:4px;font-size:12px">Checking…</div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="section-title">Quick Actions</div>
+      <div class="quick-actions">
+        <button class="qa-btn" id="qa-take-att">
+          <div class="qa-icon">📋</div>
+          <div class="qa-label">Take Attendance</div>
+          <div class="qa-sub">Mark today</div>
+        </button>
+        <button class="qa-btn" id="qa-view-students">
+          <div class="qa-icon">👩‍🎓</div>
+          <div class="qa-label">Students</div>
+          <div class="qa-sub">View roster</div>
+        </button>
+        <button class="qa-btn" id="qa-reports">
+          <div class="qa-icon">📊</div>
+          <div class="qa-label">Reports</div>
+          <div class="qa-sub">View stats</div>
+        </button>
+        <button class="qa-btn" id="qa-sync">
+          <div class="qa-icon">☁️</div>
+          <div class="qa-label">Sync Now</div>
+          <div class="qa-sub">Pull latest</div>
+        </button>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="section-title">Recent Activity</div>
+      <div id="dash-recent"></div>
+    </section>
+
+    <!-- ATTENDANCE ──────────────────────────────────────── -->
+    <section id="screen-attendance" class="screen">
+      <div class="section-title">
+        Take Attendance
+        <span class="badge" id="att-class-label"></span>
+      </div>
+
+      <div class="controls-row">
+        <div class="field-group">
+          <label>Date</label>
+          <input type="date" id="att-date" />
+        </div>
+        <div class="field-group">
+          <label>Class / Program</label>
+          <select id="att-class">
+            <option value="">All Classes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="att-actions">
+        <button class="btn btn-success btn-sm" id="btn-mark-all-present">✓ Mark All Present</button>
+        <button class="btn btn-primary btn-sm" id="btn-save-att">💾 Save Attendance</button>
+        <button class="btn btn-secondary btn-sm" id="btn-sync-roster">🔄 Sync Roster</button>
+      </div>
+
+      <!-- Summary pills -->
+      <div class="att-summary-bar" id="att-summary"></div>
+
+      <!-- Student list -->
+      <div id="att-list">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
+    <!-- STUDENTS ────────────────────────────────────────── -->
+    <section id="screen-students" class="screen">
+      <div class="section-title">
+        Student Roster
+        <span class="badge" id="student-count">0</span>
+        <button class="btn btn-secondary btn-sm" id="btn-sync-roster-2" style="margin-left:auto">🔄 Sync</button>
+      </div>
+
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="student-search" placeholder="Search by name, program, email…" />
+      </div>
+
+      <div id="student-list">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
+    <!-- PROFILE ─────────────────────────────────────────── -->
+    <section id="screen-profile" class="screen">
+      <div class="profile-header">
+        <button class="profile-back" id="profile-back">
+          ← Back to Students
+        </button>
+        <div class="profile-avatar-lg" id="profile-avatar">AB</div>
+        <div class="profile-name" id="profile-name">Student Name</div>
+        <div class="profile-class" id="profile-class">Program</div>
+
+        <div class="profile-details-grid">
+          <div class="detail-item"><div class="detail-label">Student ID</div>    <div class="detail-val" id="profile-id">—</div></div>
+          <div class="detail-item"><div class="detail-label">Gender</div>         <div class="detail-val" id="profile-gender">—</div></div>
+          <div class="detail-item"><div class="detail-label">Phone</div>          <div class="detail-val" id="profile-phone">—</div></div>
+          <div class="detail-item"><div class="detail-label">Email</div>          <div class="detail-val" id="profile-email">—</div></div>
+          <div class="detail-item"><div class="detail-label">Workplace</div>      <div class="detail-val" id="profile-workplace">—</div></div>
+          <div class="detail-item">
+            <div class="detail-label">Attendance</div>
+            <div style="display:flex;align-items:baseline;gap:4px">
+              <div class="att-pct" id="profile-pct">—</div>
+              <div style="font-size:11px;color:var(--text-2)" id="profile-total"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="section-title" style="margin-bottom:12px">📝 Notes</div>
+        <div class="field-group" style="margin-bottom:12px">
+          <label>General Notes</label>
+          <textarea class="notes-editor" id="profile-notes" placeholder="Add notes about this student…"></textarea>
+        </div>
+        <div class="field-group" style="margin-bottom:12px">
+          <label>Instructor Observations</label>
+          <textarea class="notes-editor" id="profile-observations" placeholder="Learning progress, participation, concerns…"></textarea>
+        </div>
+        <div class="field-group" style="margin-bottom:14px">
+          <label>Follow-up Reminders</label>
+          <textarea class="notes-editor" id="profile-followup" placeholder="Actions to take, reminders…" style="min-height:80px"></textarea>
+        </div>
+        <button class="btn btn-primary w-full" id="btn-save-notes">💾 Save Notes</button>
+      </div>
+
+      <!-- Attendance History -->
+      <div class="card">
+        <div class="section-title" style="margin-bottom:12px">📅 Attendance History</div>
+        <div id="profile-history"></div>
+      </div>
+    </section>
+
+    <!-- REPORTS ─────────────────────────────────────────── -->
+    <section id="screen-reports" class="screen">
+      <div class="section-title">
+        Reports
+        <button class="btn btn-secondary btn-sm" id="btn-sync-reports" style="margin-left:auto">🔄 Refresh</button>
+      </div>
+
+      <!-- Last 7 days calendar -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-title" style="margin-bottom:10px;font-size:14px">Last 7 Days</div>
+        <div class="week-grid" id="report-week"></div>
+        <div style="display:flex;gap:12px;margin-top:10px">
+          <span style="font-size:11px;color:var(--present)">■ Good (&gt;85%)</span>
+          <span style="font-size:11px;color:var(--late)">■ OK (70–85%)</span>
+          <span style="font-size:11px;color:var(--absent)">■ Low (&lt;70%)</span>
+        </div>
+      </div>
+
+      <!-- Overall stats -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-title" style="margin-bottom:12px;font-size:14px">Overall Breakdown</div>
+        <div id="report-overall"></div>
+      </div>
+
+      <!-- Per student bars -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-title" style="margin-bottom:12px;font-size:14px">Students by Attendance % <span class="badge">lowest first</span></div>
+        <div id="report-bars"></div>
+      </div>
+
+      <button class="btn btn-primary w-full" id="btn-export-csv">📥 Export CSV</button>
+    </section>
+
+    <!-- SETTINGS ────────────────────────────────────────── -->
+    <section id="screen-settings" class="screen">
+      <div class="section-title">Settings</div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Google Sheets Integration</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Apps Script URL</div>
+            <div class="setting-sub">Your deployed GAS web app URL</div>
+            <input class="setting-input" type="url" id="set-gas-url" placeholder="https://script.google.com/macros/s/…/exec" />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Instructor</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Instructor Name</div>
+            <input class="setting-input" type="text" id="set-instructor" placeholder="Your name" />
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Class Names</div>
+            <div class="setting-sub">Comma-separated list</div>
+            <input class="setting-input" type="text" id="set-classes" placeholder="Computer Science, Business Admin, Data Science" />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Sync</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Auto-sync when online</div>
+            <div class="setting-sub">Sync pending data on reconnect</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="set-autosync" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-full" id="btn-save-settings" style="margin-bottom:12px">💾 Save Settings</button>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Data</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Load Sample Data</div>
+            <div class="setting-sub">Populate with demo students for testing</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-load-sample">Load</button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Clear Local Data</div>
+            <div class="setting-sub">Remove all cached data from device</div>
+          </div>
+          <button class="btn btn-danger btn-sm" id="btn-clear-data">Clear</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:8px">
+        <div style="font-size:12px;color:var(--text-2);line-height:1.7">
+          <strong style="color:var(--text-1)">ClassTrack v1.0</strong><br/>
+          PWA · IndexedDB · Google Apps Script<br/>
+          Works offline. Syncs when online.<br/>
+          <a href="https://github.com" style="color:var(--accent)">View on GitHub ↗</a>
+        </div>
+      </div>
+    </section>
+
+  </main><!-- /main -->
+
+  <!-- ── Bottom Nav ────────────────────────────────────── -->
+  <nav id="bottom-nav">
+    <button class="nav-item active" data-screen="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-item" data-screen="attendance">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+      </svg>
+      <span>Attend</span>
+    </button>
+    <button class="nav-item" data-screen="students">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+      </svg>
+      <span>Students</span>
+    </button>
+    <button class="nav-item" data-screen="reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="14"/>
+      </svg>
+      <span>Reports</span>
+    </button>
+    <button class="nav-item" data-screen="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+</div><!-- /#app -->
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
