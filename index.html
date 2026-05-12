@@ -136,8 +136,15 @@
 
       <div class="att-actions">
         <button class="btn btn-success btn-sm" id="btn-mark-all-present">✓ Mark All Present</button>
-        <button class="btn btn-primary btn-sm" id="btn-save-att">💾 Save Attendance</button>
+        <button class="btn btn-primary btn-sm" id="btn-save-att">💾 Save</button>
         <button class="btn btn-secondary btn-sm" id="btn-sync-roster">🔄 Sync Roster</button>
+      </div>
+
+      <!-- Editing past session banner -->
+      <div id="att-edit-banner" style="display:none;align-items:center;gap:8px;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:12px;">
+        <span style="font-size:16px">✏️</span>
+        <div style="flex:1;font-size:13px">Editing saved session: <strong id="att-edit-date"></strong></div>
+        <span style="font-size:11px;color:var(--accent);font-weight:600">Save to update</span>
       </div>
 
       <!-- Summary pills -->
@@ -174,46 +181,70 @@
           ← Back to Students
         </button>
         <div class="profile-avatar-lg" id="profile-avatar">AB</div>
-        <div class="profile-name" id="profile-name">Student Name</div>
-        <div class="profile-class" id="profile-class">Program</div>
+        <div class="profile-name" id="profile-name-display" style="font-family:var(--font-display);font-weight:800;font-size:24px;margin-bottom:4px"></div>
+        <div class="profile-class" id="profile-class"></div>
+        <div style="display:flex;align-items:baseline;gap:6px;margin-top:12px">
+          <div class="att-pct" id="profile-pct" style="font-size:22px"></div>
+          <div style="font-size:12px;color:var(--text-2)" id="profile-total"></div>
+        </div>
+      </div>
 
-        <div class="profile-details-grid">
-          <div class="detail-item"><div class="detail-label">Student ID</div>    <div class="detail-val" id="profile-id">—</div></div>
-          <div class="detail-item"><div class="detail-label">Gender</div>         <div class="detail-val" id="profile-gender">—</div></div>
-          <div class="detail-item"><div class="detail-label">Phone</div>          <div class="detail-val" id="profile-phone">—</div></div>
-          <div class="detail-item"><div class="detail-label">Email</div>          <div class="detail-val" id="profile-email">—</div></div>
-          <div class="detail-item"><div class="detail-label">Workplace</div>      <div class="detail-val" id="profile-workplace">—</div></div>
-          <div class="detail-item">
-            <div class="detail-label">Attendance</div>
-            <div style="display:flex;align-items:baseline;gap:4px">
-              <div class="att-pct" id="profile-pct">—</div>
-              <div style="font-size:11px;color:var(--text-2)" id="profile-total"></div>
-            </div>
+      <!-- Editable Details -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="section-title" style="margin-bottom:14px;font-size:15px">✏️ Edit Profile</div>
+        <div class="profile-edit-grid">
+          <div class="field-group">
+            <label>Full Name</label>
+            <input type="text" id="pedit-name" class="profile-edit-input" placeholder="Full name" />
+          </div>
+          <div class="field-group">
+            <label>Student ID</label>
+            <input type="text" id="pedit-studentId" class="profile-edit-input" placeholder="STU001" />
+          </div>
+          <div class="field-group">
+            <label>Gender</label>
+            <input type="text" id="pedit-gender" class="profile-edit-input" placeholder="Female / Male / Other" />
+          </div>
+          <div class="field-group">
+            <label>Program / Class</label>
+            <input type="text" id="pedit-program" class="profile-edit-input" placeholder="Computer Science" />
+          </div>
+          <div class="field-group">
+            <label>Phone</label>
+            <input type="tel" id="pedit-phone" class="profile-edit-input" placeholder="876-555-0100" />
+          </div>
+          <div class="field-group">
+            <label>Email</label>
+            <input type="email" id="pedit-email" class="profile-edit-input" placeholder="email@example.com" />
+          </div>
+          <div class="field-group" style="grid-column:1/-1">
+            <label>Workplace</label>
+            <input type="text" id="pedit-workplace" class="profile-edit-input" placeholder="Employer / Organization" />
           </div>
         </div>
       </div>
 
       <!-- Notes -->
       <div class="card" style="margin-bottom:12px">
-        <div class="section-title" style="margin-bottom:12px">📝 Notes</div>
+        <div class="section-title" style="margin-bottom:12px;font-size:15px">📝 Notes & Observations</div>
         <div class="field-group" style="margin-bottom:12px">
           <label>General Notes</label>
-          <textarea class="notes-editor" id="profile-notes" placeholder="Add notes about this student…"></textarea>
+          <textarea class="notes-editor" id="pedit-notes" placeholder="General notes about this student…"></textarea>
         </div>
         <div class="field-group" style="margin-bottom:12px">
           <label>Instructor Observations</label>
-          <textarea class="notes-editor" id="profile-observations" placeholder="Learning progress, participation, concerns…"></textarea>
+          <textarea class="notes-editor" id="pedit-observations" placeholder="Learning progress, participation, concerns…"></textarea>
         </div>
         <div class="field-group" style="margin-bottom:14px">
           <label>Follow-up Reminders</label>
-          <textarea class="notes-editor" id="profile-followup" placeholder="Actions to take, reminders…" style="min-height:80px"></textarea>
+          <textarea class="notes-editor" id="pedit-followup" placeholder="Actions to take, reminders…" style="min-height:80px"></textarea>
         </div>
-        <button class="btn btn-primary w-full" id="btn-save-notes">💾 Save Notes</button>
+        <button class="btn btn-primary w-full" id="btn-save-profile">💾 Save Profile</button>
       </div>
 
       <!-- Attendance History -->
       <div class="card">
-        <div class="section-title" style="margin-bottom:12px">📅 Attendance History</div>
+        <div class="section-title" style="margin-bottom:12px;font-size:15px">📅 Attendance History</div>
         <div id="profile-history"></div>
       </div>
     </section>
