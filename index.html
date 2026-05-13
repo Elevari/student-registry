@@ -411,6 +411,41 @@
       </div>
     </section>
 
+
+    <!-- CLASSES ─────────────────────────────────────────── -->
+    <section id="screen-classes" class="screen">
+      <div class="section-title">
+        Classes
+        <span class="badge" id="classes-count">0</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-class" style="margin-left:auto">+ Add Class</button>
+      </div>
+
+      <div id="classes-list">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
+    <!-- ADD CLASS MODAL ─────────────────────────────────── -->
+    <div class="modal-overlay" id="add-class-modal">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+          <h3 style="margin:0" id="class-modal-title">Add Class</h3>
+          <button id="btn-close-class-modal" style="color:var(--text-2);font-size:20px;line-height:1">×</button>
+        </div>
+        <div class="field-group" style="margin-bottom:14px">
+          <label>Class Name <span style="color:var(--absent)">*</span></label>
+          <input type="text" id="class-name-input" class="profile-edit-input" placeholder="e.g. Computer Science" />
+        </div>
+        <div class="field-group" style="margin-bottom:14px">
+          <label>Description</label>
+          <input type="text" id="class-desc-input" class="profile-edit-input" placeholder="Optional description" />
+        </div>
+        <input type="hidden" id="class-edit-id" value="" />
+        <button class="btn btn-primary w-full" id="btn-confirm-class">Save Class</button>
+      </div>
+    </div>
+
   </main><!-- /main -->
 
   <!-- ── Bottom Nav ────────────────────────────────────── -->
@@ -434,6 +469,12 @@
         <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
       </svg>
       <span>Students</span>
+    </button>
+    <button class="nav-item" data-screen="classes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+      </svg>
+      <span>Classes</span>
     </button>
     <button class="nav-item" data-screen="reports">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

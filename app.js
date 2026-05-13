@@ -11,7 +11,7 @@
 ───────────────────────────────────────────────────────────── */
 const DB_NAME    = 'classtrack';
 const DB_VERSION = 4;
-const STORES     = { students: 'students', attendance: 'attendance', pending: 'pending', settings: 'settings' };
+const STORES     = { students: 'students', attendance: 'attendance', pending: 'pending', settings: 'settings', classes: 'classes' };
 
 const APP = {
   db: null,
@@ -45,6 +45,9 @@ async function openDB() {
       }
       if (!db.objectStoreNames.contains(STORES.settings)) {
         db.createObjectStore(STORES.settings, { keyPath: 'key' });
+      }
+      if (!db.objectStoreNames.contains(STORES.classes)) {
+        db.createObjectStore(STORES.classes, { keyPath: 'id' });
       }
     };
     req.onsuccess = e => resolve(e.target.result);
@@ -164,6 +167,10 @@ async function syncPendingAttendance() {
         await gasRequest('updateStudent', item.payload);
       } else if (item.type === 'addStudent') {
         await gasRequest('addStudent', item.payload);
+      } else if (item.type === 'saveClass') {
+        await gasRequest('saveClass', item.payload);
+      } else if (item.type === 'deleteClass') {
+        await gasRequest('deleteClass', item.payload);
       } else {
         await gasRequest('saveAttendance', item.payload);
       }
@@ -266,13 +273,14 @@ function showScreen(name) {
   const nav = document.querySelector(`.nav-item[data-screen="${name}"]`);
   if (nav) nav.classList.add('active');
   APP.currentScreen = name;
-  const titles = { dashboard:'ClassTrack', attendance:'Attendance', students:'Students', reports:'Reports', settings:'Settings', profile:'' };
+  const titles = { dashboard:'ClassTrack', attendance:'Attendance', students:'Students', classes:'Classes', reports:'Reports', settings:'Settings', profile:'' };
   document.getElementById('topbar-title').textContent = titles[name] || '';
   if (name === 'dashboard')  refreshDashboard();
   if (name === 'attendance') initAttendance();
   if (name === 'students')   renderStudentList();
   if (name === 'reports')    renderReports();
   if (name === 'settings')   renderSettings();
+  if (name === 'classes')    renderClasses();
 }
 
 function initials(name = '') {
@@ -690,6 +698,151 @@ async function handleAddStudent() {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   CLASSES
+───────────────────────────────────────────────────────────── */
+async function renderClasses() {
+  const list     = document.getElementById('classes-list');
+  const allAtt   = await dbGetAll(STORES.attendance);
+  const students = await dbGetAll(STORES.students);
+  const classes  = await dbGetAll(STORES.classes);
+
+  // Merge: classes from Classes store + programs found on students
+  const programsFromStudents = [...new Set(students.map(s => s.program).filter(Boolean))];
+  const classIds = new Set(classes.map(c => c.id));
+  // Auto-add any student programs not yet in classes store
+  for (const prog of programsFromStudents) {
+    if (![...classIds].some(id => id === slugify(prog))) {
+      const auto = { id: slugify(prog), name: prog, description: '', createdAt: new Date().toISOString() };
+      await dbPut(STORES.classes, auto);
+      classes.push(auto);
+      classIds.add(auto.id);
+    }
+  }
+
+  const allClasses = await dbGetAll(STORES.classes);
+  allClasses.sort((a,b) => a.name.localeCompare(b.name));
+  document.getElementById('classes-count').textContent = allClasses.length;
+
+  if (!allClasses.length) {
+    list.innerHTML = '<div class="empty-state"><div class="emoji">🎓</div><h3>No classes yet</h3><p>Tap "+ Add Class" to create one</p></div>';
+    return;
+  }
+
+  list.innerHTML = allClasses.map(cls => {
+    const enrolled = students.filter(s => s.program === cls.name).length;
+    const clsAtt   = allAtt.filter(a => {
+      const st = students.find(s => s.id === a.studentId);
+      return st && st.program === cls.name;
+    });
+    const sessions = [...new Set(clsAtt.map(a => a.date))].length;
+    return `<div class="class-card">
+      <div class="class-icon">🎓</div>
+      <div class="class-body">
+        <div class="class-name">${escHtml(cls.name)}</div>
+        <div class="class-meta">
+          ${enrolled} student${enrolled !== 1 ? 's' : ''} · ${sessions} session${sessions !== 1 ? 's' : ''}
+          ${cls.description ? ' · ' + escHtml(cls.description) : ''}
+        </div>
+      </div>
+      <div class="class-actions">
+        <button class="class-action-btn" data-edit-class="${escHtml(cls.id)}" title="Edit">✏️</button>
+        <button class="class-action-btn danger" data-delete-class="${escHtml(cls.id)}" title="Delete">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function slugify(str) {
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+function openAddClassModal(editId = '') {
+  document.getElementById('class-name-input').value = '';
+  document.getElementById('class-desc-input').value = '';
+  document.getElementById('class-edit-id').value    = editId;
+  document.getElementById('class-modal-title').textContent = editId ? 'Edit Class' : 'Add Class';
+
+  if (editId) {
+    dbGet(STORES.classes, editId).then(cls => {
+      if (cls) {
+        document.getElementById('class-name-input').value = cls.name;
+        document.getElementById('class-desc-input').value = cls.description || '';
+      }
+    });
+  }
+
+  document.getElementById('add-class-modal').classList.add('open');
+  setTimeout(() => document.getElementById('class-name-input').focus(), 300);
+}
+
+function closeClassModal() {
+  document.getElementById('add-class-modal').classList.remove('open');
+}
+
+async function handleSaveClass() {
+  const name = document.getElementById('class-name-input').value.trim();
+  if (!name) { toast('Class name is required', 'error'); return; }
+  const description = document.getElementById('class-desc-input').value.trim();
+  const editId      = document.getElementById('class-edit-id').value;
+
+  const id  = editId || slugify(name) + '-' + Date.now().toString(36);
+  const cls = { id, name, description, updatedAt: new Date().toISOString() };
+  if (!editId) cls.createdAt = new Date().toISOString();
+
+  await dbPut(STORES.classes, cls);
+
+  // Sync to Google Sheets
+  if (APP.online && APP.settings.gasUrl) {
+    try {
+      await gasRequest('saveClass', cls);
+      toast(editId ? 'Class updated ✓' : 'Class added ✓', 'success');
+    } catch {
+      await dbPut(STORES.pending, { type: 'saveClass', payload: cls, ts: Date.now() });
+      toast('Saved offline — will sync later', 'success');
+    }
+  } else {
+    await dbPut(STORES.pending, { type: 'saveClass', payload: cls, ts: Date.now() });
+    toast('Saved offline ✓', 'success');
+  }
+
+  closeClassModal();
+  renderClasses();
+  await populateClassSelect(); // refresh attendance dropdown
+}
+
+async function handleDeleteClass(id) {
+  const cls = await dbGet(STORES.classes, id);
+  if (!cls) return;
+  if (!confirm(`Delete class "${cls.name}"? Students assigned to it won't be deleted.`)) return;
+
+  await dbDelete(STORES.classes, id);
+
+  if (APP.online && APP.settings.gasUrl) {
+    try {
+      await gasRequest('deleteClass', { id });
+    } catch {
+      await dbPut(STORES.pending, { type: 'deleteClass', payload: { id }, ts: Date.now() });
+    }
+  } else {
+    await dbPut(STORES.pending, { type: 'deleteClass', payload: { id }, ts: Date.now() });
+  }
+
+  toast(`"${cls.name}" deleted`, 'success');
+  renderClasses();
+  await populateClassSelect();
+}
+
+async function syncClasses() {
+  if (!APP.online || !APP.settings.gasUrl) return;
+  try {
+    const data = await gasRequest('getClasses');
+    if (data.classes && Array.isArray(data.classes)) {
+      for (const cls of data.classes) await dbPut(STORES.classes, cls);
+    }
+  } catch {}
+}
+
+/* ─────────────────────────────────────────────────────────────
    EXPORT CSV
 ───────────────────────────────────────────────────────────── */
 async function exportCSV() {
@@ -871,6 +1024,20 @@ function bindEvents() {
     refreshDashboard();
   });
 
+  // Classes
+  document.getElementById('btn-add-class').addEventListener('click', () => openAddClassModal());
+  document.getElementById('btn-close-class-modal').addEventListener('click', closeClassModal);
+  document.getElementById('btn-confirm-class').addEventListener('click', handleSaveClass);
+  document.getElementById('add-class-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('add-class-modal')) closeClassModal();
+  });
+  document.getElementById('classes-list').addEventListener('click', e => {
+    const editBtn   = e.target.closest('[data-edit-class]');
+    const deleteBtn = e.target.closest('[data-delete-class]');
+    if (editBtn)   openAddClassModal(editBtn.dataset.editClass);
+    if (deleteBtn) handleDeleteClass(deleteBtn.dataset.deleteClass);
+  });
+
   // Dashboard quick actions
   document.getElementById('qa-take-att').addEventListener('click',     () => showScreen('attendance'));
   document.getElementById('qa-view-students').addEventListener('click',() => showScreen('students'));
@@ -896,7 +1063,7 @@ async function init() {
   await loadSampleData();
   showScreen('dashboard');
   if (APP.online && APP.settings.autoSync !== false) {
-    setTimeout(() => syncPendingAttendance(), 2000);
+    setTimeout(async () => { await syncClasses(); syncPendingAttendance(); }, 2000);
   }
 }
 
