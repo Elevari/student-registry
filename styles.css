@@ -309,9 +309,10 @@ select.ct-input option { background: var(--card); }
 .att-row {
   background: var(--card); border: 1.5px solid var(--border);
   border-radius: var(--radius-md); padding: 10px 12px;
-  margin-bottom: 7px; display: flex; align-items: center; gap: 10px;
+  margin-bottom: 7px; display: flex; align-items: center; gap: 8px;
   animation: fadeUp .3s cubic-bezier(.22,1,.36,1) both;
   transition: background var(--transition);
+  min-width: 0;
 }
 .att-row:hover { background: var(--surface); }
 .att-row.is-present { border-left: 3px solid var(--lime); }
@@ -325,13 +326,13 @@ select.ct-input option { background: var(--card); }
 .pa-group {
   display: flex; border: 1.5px solid var(--border);
   border-radius: var(--radius-sm); overflow: hidden; background: var(--surface);
-  flex-shrink: 0;
+  flex-shrink: 0; width: 70px;
 }
 .pa-btn {
-  width: 34px; height: 28px; font-family: var(--f-head); font-weight: 700;
+  width: 35px; height: 28px; font-family: var(--f-head); font-weight: 700;
   font-size: 11px; display: flex; align-items: center; justify-content: center;
   cursor: pointer; color: var(--t-muted); transition: all .15s;
-  background: transparent; border: none;
+  background: transparent; border: none; flex-shrink: 0;
 }
 .pa-btn.p-on { background: var(--lime); color: #0e0e11; }
 .pa-btn.a-on { background: var(--danger); color: #fff; }
