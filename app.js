@@ -1313,7 +1313,7 @@ function bindEvents() {
   // Students
   document.getElementById('student-search').addEventListener('input', e => renderStudentList(e.target.value));
   document.getElementById('student-list').addEventListener('click', e => {
-    const card = e.target.closest('.student-card');
+    const card = e.target.closest('.entry-card');
     if (card) showProfile(card.dataset.sid);
   });
   document.getElementById('btn-sync-roster-2').addEventListener('click', () => {
