@@ -302,35 +302,42 @@
 
     <!-- REPORTS ─────────────────────────────────────────── -->
     <section id="screen-reports" class="screen">
-      <div class="section-title">
-        Reports
-        <button class="btn btn-secondary btn-sm" id="btn-sync-reports" style="margin-left:auto">🔄 Refresh</button>
-      </div>
+      <div class="section-title">Class Register</div>
 
-      <!-- Last 7 days calendar -->
+      <!-- Filters -->
       <div class="card" style="margin-bottom:14px">
-        <div class="section-title" style="margin-bottom:10px;font-size:14px">Last 7 Days</div>
-        <div class="week-grid" id="report-week"></div>
-        <div style="display:flex;gap:12px;margin-top:10px">
-          <span style="font-size:11px;color:var(--present)">■ Good (&gt;85%)</span>
-          <span style="font-size:11px;color:var(--late)">■ OK (70–85%)</span>
-          <span style="font-size:11px;color:var(--absent)">■ Low (&lt;70%)</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div class="field-group">
+            <label>From Date</label>
+            <input type="date" id="report-date-from" class="profile-edit-input" />
+          </div>
+          <div class="field-group">
+            <label>To Date</label>
+            <input type="date" id="report-date-to" class="profile-edit-input" />
+          </div>
         </div>
+        <div class="field-group" style="margin-bottom:12px">
+          <label>Class / Program</label>
+          <select id="report-class-filter" class="profile-edit-input">
+            <option value="">All Classes</option>
+          </select>
+        </div>
+        <button class="btn btn-primary w-full" id="btn-generate-report">Generate Register</button>
       </div>
 
-      <!-- Overall stats -->
-      <div class="card" style="margin-bottom:14px">
-        <div class="section-title" style="margin-bottom:12px;font-size:14px">Overall Breakdown</div>
-        <div id="report-overall"></div>
+      <!-- Register grid -->
+      <div id="report-register-wrap" style="display:none">
+        <div style="overflow-x:auto;margin-bottom:14px;border-radius:var(--radius-lg);border:1px solid var(--bg-3)">
+          <table id="report-register-table" class="register-table"></table>
+        </div>
+        <button class="btn btn-primary w-full" id="btn-export-xlsx">📥 Export to Excel</button>
       </div>
 
-      <!-- Per student bars -->
-      <div class="card" style="margin-bottom:14px">
-        <div class="section-title" style="margin-bottom:12px;font-size:14px">Students by Attendance % <span class="badge">lowest first</span></div>
-        <div id="report-bars"></div>
+      <div id="report-empty" class="empty-state">
+        <div class="emoji">📋</div>
+        <h3>No data yet</h3>
+        <p>Select a date range and class, then tap Generate</p>
       </div>
-
-      <button class="btn btn-primary w-full" id="btn-export-csv">📥 Export CSV</button>
     </section>
 
     <!-- SETTINGS ────────────────────────────────────────── -->

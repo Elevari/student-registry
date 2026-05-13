@@ -641,52 +641,183 @@ async function handleSaveProfile() {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   REPORTS
+   REPORTS – Class Register
 ───────────────────────────────────────────────────────────── */
 async function renderReports() {
-  const allAtt   = await dbGetAll(STORES.attendance);
+  // Set default date range: first day of current month → today
+  const today     = formatDate();
+  const firstOfMonth = today.slice(0, 8) + '01';
+  const fromEl    = document.getElementById('report-date-from');
+  const toEl      = document.getElementById('report-date-to');
+  if (!fromEl.value) fromEl.value = firstOfMonth;
+  if (!toEl.value)   toEl.value   = today;
+
+  // Populate class filter
+  await populateReportClassFilter();
+
+  // Hide register, show empty state until user generates
+  document.getElementById('report-register-wrap').style.display = 'none';
+  document.getElementById('report-empty').style.display = 'block';
+}
+
+async function populateReportClassFilter() {
+  const sel      = document.getElementById('report-class-filter');
+  const current  = sel.value;
   const students = await dbGetAll(STORES.students);
-  const today    = new Date();
+  const classes  = [...new Set(students.map(s => s.program).filter(Boolean))].sort();
+  const settings = APP.settings.classes || [];
+  const all      = [...new Set([...settings, ...classes])];
+  sel.innerHTML  = '<option value="">All Classes</option>' +
+    all.map(c => `<option value="${escHtml(c)}" ${c === current ? 'selected' : ''}>${escHtml(c)}</option>`).join('');
+}
 
-  const weekDays = Array.from({length:7}, (_,i) => {
-    const d = new Date(today); d.setDate(d.getDate() - 6 + i);
-    return formatDate(d);
+async function generateRegister() {
+  const fromDate  = document.getElementById('report-date-from').value;
+  const toDate    = document.getElementById('report-date-to').value;
+  const classFilter = document.getElementById('report-class-filter').value;
+
+  if (!fromDate || !toDate) { toast('Please select both dates', 'error'); return; }
+  if (fromDate > toDate)    { toast('From date must be before To date', 'error'); return; }
+
+  let students = await dbGetAll(STORES.students);
+  if (classFilter) students = students.filter(s => s.program === classFilter);
+  students.sort((a,b) => a.name.localeCompare(b.name));
+
+  if (!students.length) {
+    toast('No students found for this filter', 'error');
+    return;
+  }
+
+  // Build list of dates in range that have attendance data
+  const allAtt   = await dbGetAll(STORES.attendance);
+  const rangeDates = getDatesInRange(fromDate, toDate);
+
+  // Only include dates that actually have records (don't show empty columns)
+  const activeDates = rangeDates.filter(d =>
+    allAtt.some(a => a.date === d &&
+      (!classFilter || students.find(s => s.id === a.studentId)))
+  );
+
+  if (!activeDates.length) {
+    toast('No attendance records found for this date range', 'error');
+    return;
+  }
+
+  // Build lookup: studentId+date -> status
+  const attMap = {};
+  allAtt.forEach(a => { attMap[a.studentId + '|' + a.date] = a.status; });
+
+  // Render table
+  renderRegisterTable(students, activeDates, attMap);
+
+  document.getElementById('report-register-wrap').style.display = 'block';
+  document.getElementById('report-empty').style.display = 'none';
+}
+
+function getDatesInRange(from, to) {
+  const dates = [];
+  const cur   = new Date(from + 'T00:00:00');
+  const end   = new Date(to   + 'T00:00:00');
+  while (cur <= end) {
+    dates.push(formatDate(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
+function renderRegisterTable(students, dates, attMap) {
+  const table = document.getElementById('report-register-table');
+
+  // Build header row
+  let thead = '<thead><tr>';
+  thead += '<th class="reg-th reg-th-name">Employee Name</th>';
+  dates.forEach(d => {
+    const dt  = new Date(d + 'T00:00:00');
+    const day = dt.getDate();
+    const dow = dt.toLocaleDateString('en-US', { weekday: 'short' });
+    thead += `<th class="reg-th reg-th-date"><div class="reg-day-num">${day}</div><div class="reg-day-name">${dow}</div></th>`;
   });
-  document.getElementById('report-week').innerHTML = weekDays.map(d => {
-    const recs  = allAtt.filter(a => a.date === d);
-    const p     = recs.filter(a => a.status === 'P').length;
-    const total = recs.length;
-    const pct   = total ? Math.round(p / total * 100) : 0;
-    const day   = new Date(d + 'T00:00:00').toLocaleDateString('en-US', {weekday:'short'})[0];
-    return `<div class="week-cell ${total ? (pct > 85 ? 'P' : pct > 70 ? 'L' : 'A') : ''}" title="${niceDate(d)}: ${pct}%">${day}</div>`;
-  }).join('');
+  thead += '</tr></thead>';
 
-  const studentStats = students.map(s => {
-    const sAtt = allAtt.filter(a => a.studentId === s.id);
-    return { ...s, pct: sAtt.length ? Math.round(sAtt.filter(a=>a.status==='P').length/sAtt.length*100) : 0, total: sAtt.length };
-  }).filter(s => s.total > 0).sort((a,b) => a.pct - b.pct);
+  // Build body rows
+  let tbody = '<tbody>';
+  students.forEach((s, idx) => {
+    const rowClass = idx % 2 === 0 ? 'reg-row-even' : 'reg-row-odd';
+    tbody += `<tr class="${rowClass}">`;
+    tbody += `<td class="reg-td reg-td-name">${escHtml(s.name)}</td>`;
+    dates.forEach(d => {
+      const status = attMap[s.id + '|' + d] || '';
+      const cls    = status === 'P' ? 'reg-p' : status === 'A' ? 'reg-a' : 'reg-empty';
+      tbody += `<td class="reg-td reg-td-cell ${cls}">${status}</td>`;
+    });
+    tbody += '</tr>';
+  });
+  tbody += '</tbody>';
 
-  document.getElementById('report-bars').innerHTML = studentStats.length
-    ? studentStats.slice(0,15).map(s => `
-        <div class="report-bar-wrap">
-          <div class="report-bar-label"><span>${escHtml(s.name)}</span><span>${s.pct}% (${s.total} sessions)</span></div>
-          <div class="report-bar-track"><div class="report-bar-fill ${s.pct<70?'danger':s.pct<85?'warn':''}" style="width:${s.pct}%"></div></div>
-        </div>`).join('')
-    : '<div class="empty-state"><div class="emoji">📊</div><h3>No data yet</h3></div>';
+  table.innerHTML = thead + tbody;
+}
 
-  const total = allAtt.length;
-  const P = allAtt.filter(a=>a.status==='P').length;
-  const A = allAtt.filter(a=>a.status==='A').length;
-  document.getElementById('report-overall').innerHTML = total
-    ? `<div class="report-bar-wrap">
-         <div class="report-bar-label"><span>Present</span><span>${P}/${total} (${Math.round(P/total*100)}%)</span></div>
-         <div class="report-bar-track"><div class="report-bar-fill" style="width:${Math.round(P/total*100)}%"></div></div>
-       </div>
-       <div class="report-bar-wrap">
-         <div class="report-bar-label"><span>Absent</span><span>${A}/${total} (${Math.round(A/total*100)}%)</span></div>
-         <div class="report-bar-track"><div class="report-bar-fill danger" style="width:${Math.round(A/total*100)}%"></div></div>
-       </div>`
-    : '<div class="text-muted" style="font-size:13px">No data recorded yet</div>';
+async function exportRegisterXLSX() {
+  const fromDate    = document.getElementById('report-date-from').value;
+  const toDate      = document.getElementById('report-date-to').value;
+  const classFilter = document.getElementById('report-class-filter').value;
+
+  if (!fromDate || !toDate) { toast('Please generate the report first', 'error'); return; }
+
+  let students = await dbGetAll(STORES.students);
+  if (classFilter) students = students.filter(s => s.program === classFilter);
+  students.sort((a,b) => a.name.localeCompare(b.name));
+
+  const allAtt     = await dbGetAll(STORES.attendance);
+  const rangeDates = getDatesInRange(fromDate, toDate);
+  const activeDates = rangeDates.filter(d =>
+    allAtt.some(a => a.date === d && (!classFilter || students.find(s => s.id === a.studentId)))
+  );
+
+  const attMap = {};
+  allAtt.forEach(a => { attMap[a.studentId + '|' + a.date] = a.status; });
+
+  // Build CSV-style data and convert to Excel using SheetJS (loaded via CDN)
+  // We'll use a simple downloadable CSV that opens cleanly in Excel
+  const title    = classFilter || 'All Classes';
+  const rows     = [];
+
+  // Header row 1: title
+  rows.push([`Class Register – ${title}`, ...new Array(activeDates.length).fill('')]);
+
+  // Header row 2: date range
+  rows.push([`${niceDate(fromDate)} – ${niceDate(toDate)}`, ...new Array(activeDates.length).fill('')]);
+
+  // Header row 3: blank
+  rows.push([]);
+
+  // Header row 4: column headers
+  rows.push(['Employee Name', ...activeDates.map(d => {
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  })]);
+
+  // Data rows
+  students.forEach(s => {
+    const row = [s.name];
+    activeDates.forEach(d => {
+      row.push(attMap[s.id + '|' + d] || '');
+    });
+    rows.push(row);
+  });
+
+  // Convert to CSV (Excel compatible)
+  const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('
+');
+  const bom  = '﻿'; // UTF-8 BOM so Excel opens correctly
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `register_${classFilter || 'all'}_${fromDate}_to_${toDate}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Register exported ✓', 'success');
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1053,8 +1184,8 @@ function bindEvents() {
   document.getElementById('btn-save-profile').addEventListener('click', handleSaveProfile);
 
   // Reports
-  document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
-  document.getElementById('btn-sync-reports').addEventListener('click', () => syncRoster().then(() => renderReports()));
+  document.getElementById('btn-generate-report').addEventListener('click', generateRegister);
+  document.getElementById('btn-export-xlsx').addEventListener('click', exportRegisterXLSX);
 
   // Settings
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
