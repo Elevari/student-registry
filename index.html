@@ -4,510 +4,341 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="Classroom attendance and student profile management" />
-  <meta name="theme-color" content="#6c63ff" />
+  <meta name="theme-color" content="#0e0e11" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="ClassTrack" />
   <meta name="mobile-web-app-capable" content="yes" />
-
-  <!-- Splash / icons for iOS -->
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="icon" type="image/png" sizes="32x32"  href="icons/icon-96.png" />
-
   <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Epilogue:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
-
   <title>ClassTrack</title>
 </head>
 <body>
 <div id="app">
 
-  <!-- ── Top Bar ─────────────────────────────────────────── -->
+  <!-- HEADER -->
   <header id="topbar">
-    <div class="logo">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <rect x="2" y="3" width="20" height="18" rx="3" stroke="currentColor" stroke-width="2"/>
-        <path d="M8 9h8M8 12h5M8 15h6" stroke="#6c63ff" stroke-width="2" stroke-linecap="round"/>
-        <circle cx="18" cy="17" r="4" fill="#6c63ff"/>
-        <path d="M16.5 17l1 1 2-2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      Class<span>Track</span>
-    </div>
-    <span id="topbar-title" class="text-muted" style="font-size:13px;flex:1;text-align:center"></span>
+    <div class="logo">Class<span>Track</span></div>
+    <div style="flex:1"></div>
     <div id="sync-badge" class="online">
       <div class="dot"></div>
       <span>Online</span>
     </div>
-    <button id="btn-install">Install</button>
+    <button id="btn-install" class="hdr-btn" style="display:none;color:var(--lime);font-size:11px;font-family:var(--f-head);font-weight:700;padding:0 10px;width:auto">Install</button>
+    <button class="hdr-btn" id="btn-hdr-sync" title="Sync now">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+    </button>
   </header>
 
-  <!-- ── Main ────────────────────────────────────────────── -->
+  <!-- TAB BAR -->
+  <div id="tab-bar">
+    <button class="tab active" data-screen="dashboard">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Home
+    </button>
+    <button class="tab" data-screen="attendance">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Attend
+    </button>
+    <button class="tab" data-screen="students">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Students
+    </button>
+    <button class="tab" data-screen="classes">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Classes
+    </button>
+    <button class="tab" data-screen="reports">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Reports
+    </button>
+    <button class="tab" data-screen="settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </button>
+  </div>
+
+  <!-- MAIN -->
   <main>
 
-    <!-- DASHBOARD ──────────────────────────────────────── -->
+    <!-- DASHBOARD -->
     <section id="screen-dashboard" class="screen active">
-      <div style="margin-bottom:20px">
-        <div class="display" style="margin-bottom:4px">Good day! 👋</div>
-        <div id="dash-date" class="text-muted" style="font-size:14px"></div>
-      </div>
-
+      <div class="sec-label" id="dash-date"></div>
       <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">👥</div>
-          <div class="stat-val" id="dash-total">0</div>
-          <div class="stat-label">Students</div>
-        </div>
-        <div class="stat-card present-card">
-          <div class="stat-icon">✅</div>
-          <div class="stat-val" id="dash-present">0</div>
-          <div class="stat-label">Present Today</div>
-        </div>
-        <div class="stat-card absent-card">
-          <div class="stat-icon">❌</div>
-          <div class="stat-val" id="dash-absent">0</div>
-          <div class="stat-label">Absent Today</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">⏰</div>
-          <div class="stat-val" id="dash-late">0</div>
-          <div class="stat-label">Late Today</div>
-        </div>
+        <div class="stat-card"><div class="stat-val" id="dash-total">0</div><div class="stat-lbl">Total students</div></div>
+        <div class="stat-card"><div class="stat-val lime" id="dash-present">0</div><div class="stat-lbl">Present today</div></div>
+        <div class="stat-card"><div class="stat-val red" id="dash-absent">0</div><div class="stat-lbl">Absent today</div></div>
+        <div class="stat-card"><div class="stat-val muted" id="dash-late">0</div><div class="stat-lbl">Unsynced</div></div>
       </div>
-
-      <!-- Sync status -->
-      <div class="card card-sm flex items-center gap-3" style="margin-bottom:16px">
-        <span style="font-size:20px">🔄</span>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600">Sync Status</div>
-          <div id="dash-pending" class="tag" style="margin-top:4px;font-size:12px">Checking…</div>
-        </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="section-title">Quick Actions</div>
-      <div class="quick-actions">
-        <button class="qa-btn" id="qa-take-att">
-          <div class="qa-icon">📋</div>
+      <div class="sec-label">Quick actions</div>
+      <div class="qa-grid">
+        <button class="qa-btn lime-bar" id="qa-take-att">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--lime)"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           <div class="qa-label">Take Attendance</div>
           <div class="qa-sub">Mark today</div>
         </button>
-        <button class="qa-btn" id="qa-view-students">
-          <div class="qa-icon">👩‍🎓</div>
-          <div class="qa-label">Students</div>
-          <div class="qa-sub">View roster</div>
+        <button class="qa-btn orange-bar" id="qa-view-students">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--warn)"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          <div class="qa-label">View Students</div>
+          <div class="qa-sub">Roster</div>
         </button>
-        <button class="qa-btn" id="qa-reports">
-          <div class="qa-icon">📊</div>
+        <button class="qa-btn lime-bar" id="qa-reports">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--lime)"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           <div class="qa-label">Reports</div>
-          <div class="qa-sub">View stats</div>
+          <div class="qa-sub">Class register</div>
         </button>
-        <button class="qa-btn" id="qa-sync">
-          <div class="qa-icon">☁️</div>
+        <button class="qa-btn orange-bar" id="qa-sync">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--warn)"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
           <div class="qa-label">Sync Now</div>
           <div class="qa-sub">Pull latest</div>
         </button>
       </div>
-
-
+      <div class="sec-label">Sync status</div>
+      <div class="entry-card">
+        <div class="entry-bar" id="dash-sync-bar" style="background:var(--lime)"></div>
+        <div class="sync-dot-wrap"><div class="sync-dot" id="dash-sync-dot"></div></div>
+        <div style="flex:1">
+          <div class="entry-name">Sync status</div>
+          <div class="entry-sub" id="dash-pending">Checking…</div>
+        </div>
+        <span class="badge lime-badge" id="dash-online-badge">Online</span>
+      </div>
     </section>
 
-    <!-- ATTENDANCE ──────────────────────────────────────── -->
+    <!-- ATTENDANCE -->
     <section id="screen-attendance" class="screen">
-      <div class="section-title">
-        Take Attendance
-        <span class="badge" id="att-class-label"></span>
-      </div>
-
-      <div class="controls-row">
-        <div class="field-group">
-          <label>Date</label>
-          <input type="date" id="att-date" />
+      <div class="sec-label">Attendance</div>
+      <div class="ct-card" style="margin-bottom:14px">
+        <div class="field-row">
+          <div class="field-group"><div class="field-lbl">Date</div><input type="date" id="att-date" class="ct-input" /></div>
+          <div class="field-group"><div class="field-lbl">Class</div>
+            <select id="att-class" class="ct-input"><option value="">All Classes</option></select>
+          </div>
         </div>
-        <div class="field-group">
-          <label>Class / Program</label>
-          <select id="att-class">
-            <option value="">All Classes</option>
-          </select>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn-primary" id="btn-mark-all-present" style="font-size:.72rem;padding:10px">✓ Mark All Present</button>
+          <button class="btn-secondary" id="btn-save-att" style="font-size:.72rem;padding:10px">💾 Save All</button>
+          <button class="btn-ghost" id="btn-sync-roster" style="font-size:.72rem;padding:10px">⟳ Sync</button>
         </div>
       </div>
-
-      <div class="att-actions">
-        <button class="btn btn-success btn-sm" id="btn-mark-all-present">✓ Mark All Present</button>
-        <button class="btn btn-primary btn-sm" id="btn-save-att">💾 Save</button>
-        <button class="btn btn-secondary btn-sm" id="btn-sync-roster">🔄 Sync Roster</button>
+      <div id="att-edit-banner" class="edit-banner" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Editing: <strong id="att-edit-date"></strong> — save to update
       </div>
-
-      <!-- Editing past session banner -->
-      <div id="att-edit-banner" style="display:none;align-items:center;gap:8px;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:12px;">
-        <span style="font-size:16px">✏️</span>
-        <div style="flex:1;font-size:13px">Editing saved session: <strong id="att-edit-date"></strong></div>
-        <span style="font-size:11px;color:var(--accent);font-weight:600">Save to update</span>
-      </div>
-
-      <!-- Summary pills -->
       <div class="att-summary-bar" id="att-summary"></div>
-
-      <!-- Student list -->
-      <div id="att-list">
-        <div class="spinner"></div>
-      </div>
+      <div id="att-list"><div class="ct-spinner"></div></div>
     </section>
 
-    <!-- STUDENTS ────────────────────────────────────────── -->
+    <!-- STUDENTS -->
     <section id="screen-students" class="screen">
-      <div class="section-title">
-        Student Roster
-        <span class="badge" id="student-count">0</span>
-        <div style="margin-left:auto;display:flex;gap:8px">
-          <button class="btn btn-primary btn-sm" id="btn-add-student">+ Add</button>
-          <button class="btn btn-secondary btn-sm" id="btn-sync-roster-2">🔄 Sync</button>
+      <div class="screen-header">
+        <div class="sec-label" style="margin:0">Students <span class="count-badge" id="student-count">0</span></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary btn-sm" id="btn-add-student">+ Add</button>
+          <button class="btn-ghost btn-sm" id="btn-sync-roster-2">⟳ Sync</button>
         </div>
       </div>
-
-      <div class="search-bar">
-        <span class="search-icon">🔍</span>
-        <input type="search" id="student-search" placeholder="Search by name, program, email…" />
+      <div class="search-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" id="student-search" class="search-input" placeholder="Search name, email, class…" />
       </div>
-
-      <div id="student-list">
-        <div class="spinner"></div>
-      </div>
+      <div id="student-list"><div class="ct-spinner"></div></div>
     </section>
 
-    <!-- ADD STUDENT MODAL ───────────────────────────────── -->
-    <div class="modal-overlay" id="add-student-modal">
-      <div class="modal">
-        <div class="modal-handle"></div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-          <h3 style="margin:0">Add Student</h3>
-          <button id="btn-close-add-modal" style="color:var(--text-2);font-size:20px;line-height:1">×</button>
-        </div>
-
-        <div class="profile-edit-grid" style="margin-bottom:14px">
-          <div class="field-group" style="grid-column:1/-1">
-            <label>Full Name <span style="color:var(--absent)">*</span></label>
-            <input type="text" id="add-name" class="profile-edit-input" placeholder="e.g. Alice Johnson" />
-          </div>
-          <div class="field-group">
-            <label>Student ID</label>
-            <input type="text" id="add-studentId" class="profile-edit-input" placeholder="e.g. STU009" />
-          </div>
-          <div class="field-group">
-            <label>Gender</label>
-            <select id="add-gender" class="profile-edit-input">
-              <option value="">— select —</option>
-              <option>Female</option>
-              <option>Male</option>
-              <option>Other</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label>Phone</label>
-            <input type="tel" id="add-phone" class="profile-edit-input" placeholder="876-555-0100" />
-          </div>
-          <div class="field-group">
-            <label>Email</label>
-            <input type="email" id="add-email" class="profile-edit-input" placeholder="email@example.com" />
-          </div>
-          <div class="field-group" style="grid-column:1/-1">
-            <label>Program / Class</label>
-            <select id="add-program" class="profile-edit-input">
-              <option value="">— select class —</option>
-            </select>
-          </div>
-          <div class="field-group" style="grid-column:1/-1">
-            <label>Workplace</label>
-            <input type="text" id="add-workplace" class="profile-edit-input" placeholder="Employer / Organization" />
-          </div>
-        </div>
-
-        <button class="btn btn-primary w-full" id="btn-confirm-add-student">Save Student</button>
-      </div>
-    </div>
-
-    <!-- PROFILE ─────────────────────────────────────────── -->
+    <!-- PROFILE -->
     <section id="screen-profile" class="screen">
-      <div class="profile-header">
-        <button class="profile-back" id="profile-back">
-          ← Back to Students
-        </button>
-        <div class="profile-avatar-lg" id="profile-avatar">AB</div>
-        <div class="profile-name" id="profile-name-display" style="font-family:var(--font-display);font-weight:800;font-size:24px;margin-bottom:4px"></div>
-        <div class="profile-class" id="profile-class"></div>
-        <div style="display:flex;align-items:baseline;gap:6px;margin-top:12px">
-          <div class="att-pct" id="profile-pct" style="font-size:22px"></div>
-          <div style="font-size:12px;color:var(--text-2)" id="profile-total"></div>
+      <button class="back-btn" id="profile-back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        Back to Students
+      </button>
+      <div class="profile-hero">
+        <div class="profile-av" id="profile-avatar">AB</div>
+        <div>
+          <div class="profile-name" id="profile-name-display"></div>
+          <div class="profile-class" id="profile-class"></div>
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <div class="profile-pct" id="profile-pct">—</div>
+          <div class="profile-pct-lbl" id="profile-total"></div>
         </div>
       </div>
-
-      <!-- Editable Details -->
-      <div class="card" style="margin-bottom:12px">
-        <div class="section-title" style="margin-bottom:14px;font-size:15px">✏️ Edit Profile</div>
-        <div class="profile-edit-grid">
-          <div class="field-group">
-            <label>Full Name</label>
-            <input type="text" id="pedit-name" class="profile-edit-input" placeholder="Full name" />
-          </div>
-          <div class="field-group">
-            <label>Student ID</label>
-            <input type="text" id="pedit-studentId" class="profile-edit-input" placeholder="STU001" />
-          </div>
-          <div class="field-group">
-            <label>Gender</label>
-            <select id="pedit-gender" class="profile-edit-input">
+      <div class="sec-label">Edit profile</div>
+      <div class="ct-card" style="margin-bottom:12px">
+        <div class="field-row">
+          <div class="field-group"><div class="field-lbl">Full Name</div><input type="text" id="pedit-name" class="ct-input" /></div>
+          <div class="field-group"><div class="field-lbl">Student ID</div><input type="text" id="pedit-studentId" class="ct-input" /></div>
+        </div>
+        <div class="field-row" style="margin-top:10px">
+          <div class="field-group"><div class="field-lbl">Gender</div>
+            <select id="pedit-gender" class="ct-input">
               <option value="">— select —</option>
-              <option>Female</option>
-              <option>Male</option>
-              <option>Other</option>
+              <option>Female</option><option>Male</option><option>Other</option>
             </select>
           </div>
-          <div class="field-group">
-            <label>Program / Class</label>
-            <select id="pedit-program" class="profile-edit-input">
-              <option value="">— select class —</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label>Phone</label>
-            <input type="tel" id="pedit-phone" class="profile-edit-input" placeholder="876-555-0100" />
-          </div>
-          <div class="field-group">
-            <label>Email</label>
-            <input type="email" id="pedit-email" class="profile-edit-input" placeholder="email@example.com" />
-          </div>
-          <div class="field-group" style="grid-column:1/-1">
-            <label>Workplace</label>
-            <input type="text" id="pedit-workplace" class="profile-edit-input" placeholder="Employer / Organization" />
+          <div class="field-group"><div class="field-lbl">Class</div>
+            <select id="pedit-program" class="ct-input"><option value="">— select —</option></select>
           </div>
         </div>
+        <div class="field-row" style="margin-top:10px">
+          <div class="field-group"><div class="field-lbl">Phone</div><input type="tel" id="pedit-phone" class="ct-input" /></div>
+          <div class="field-group"><div class="field-lbl">Email</div><input type="email" id="pedit-email" class="ct-input" /></div>
+        </div>
+        <div class="field-group" style="margin-top:10px"><div class="field-lbl">Workplace</div><input type="text" id="pedit-workplace" class="ct-input" /></div>
       </div>
-
-      <!-- Notes -->
-      <div class="card" style="margin-bottom:12px">
-        <div class="section-title" style="margin-bottom:12px;font-size:15px">📝 Notes & Observations</div>
-        <div class="field-group" style="margin-bottom:12px">
-          <label>General Notes</label>
-          <textarea class="notes-editor" id="pedit-notes" placeholder="General notes about this student…"></textarea>
-        </div>
-        <div class="field-group" style="margin-bottom:12px">
-          <label>Instructor Observations</label>
-          <textarea class="notes-editor" id="pedit-observations" placeholder="Learning progress, participation, concerns…"></textarea>
-        </div>
-        <div class="field-group" style="margin-bottom:14px">
-          <label>Follow-up Reminders</label>
-          <textarea class="notes-editor" id="pedit-followup" placeholder="Actions to take, reminders…" style="min-height:80px"></textarea>
-        </div>
-        <button class="btn btn-primary w-full" id="btn-save-profile">💾 Save Profile</button>
+      <div class="sec-label">Notes & observations</div>
+      <div class="ct-card" style="margin-bottom:12px">
+        <div class="field-group" style="margin-bottom:10px"><div class="field-lbl">General Notes</div><textarea id="pedit-notes" class="ct-input ct-textarea" placeholder="General notes…"></textarea></div>
+        <div class="field-group" style="margin-bottom:10px"><div class="field-lbl">Instructor Observations</div><textarea id="pedit-observations" class="ct-input ct-textarea" placeholder="Progress, participation, concerns…"></textarea></div>
+        <div class="field-group" style="margin-bottom:14px"><div class="field-lbl">Follow-up Reminders</div><textarea id="pedit-followup" class="ct-input ct-textarea" placeholder="Actions, reminders…" style="min-height:70px"></textarea></div>
+        <button class="btn-primary" id="btn-save-profile">Save Profile</button>
       </div>
-
-      <!-- Attendance History -->
-      <div class="card">
-        <div class="section-title" style="margin-bottom:12px;font-size:15px">📅 Attendance History</div>
-        <div id="profile-history"></div>
-      </div>
+      <div class="sec-label">Attendance history</div>
+      <div class="ct-card"><div id="profile-history"></div></div>
     </section>
 
-    <!-- REPORTS ─────────────────────────────────────────── -->
-    <section id="screen-reports" class="screen">
-      <div class="section-title">Class Register</div>
-
-      <!-- Filters -->
-      <div class="card" style="margin-bottom:14px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div class="field-group">
-            <label>From Date</label>
-            <input type="date" id="report-date-from" class="profile-edit-input" />
-          </div>
-          <div class="field-group">
-            <label>To Date</label>
-            <input type="date" id="report-date-to" class="profile-edit-input" />
-          </div>
-        </div>
-        <div class="field-group" style="margin-bottom:12px">
-          <label>Class / Program</label>
-          <select id="report-class-filter" class="profile-edit-input">
-            <option value="">All Classes</option>
-          </select>
-        </div>
-        <button class="btn btn-primary w-full" id="btn-generate-report">Generate Register</button>
+    <!-- CLASSES -->
+    <section id="screen-classes" class="screen">
+      <div class="screen-header">
+        <div class="sec-label" style="margin:0">Classes <span class="count-badge" id="classes-count">0</span></div>
+        <button class="btn-primary btn-sm" id="btn-add-class">+ Add Class</button>
       </div>
+      <div id="classes-list"><div class="ct-spinner"></div></div>
+    </section>
 
-      <!-- Register grid -->
+    <!-- REPORTS -->
+    <section id="screen-reports" class="screen">
+      <div class="sec-label">Class Register</div>
+      <div class="ct-card" style="margin-bottom:14px">
+        <div class="field-row">
+          <div class="field-group"><div class="field-lbl">From Date</div><input type="date" id="report-date-from" class="ct-input" /></div>
+          <div class="field-group"><div class="field-lbl">To Date</div><input type="date" id="report-date-to" class="ct-input" /></div>
+        </div>
+        <div class="field-group" style="margin-top:10px"><div class="field-lbl">Class / Program</div>
+          <select id="report-class-filter" class="ct-input"><option value="">All Classes</option></select>
+        </div>
+        <button class="btn-primary" id="btn-generate-report" style="margin-top:12px">Generate Register</button>
+      </div>
       <div id="report-register-wrap" style="display:none">
-        <div style="overflow-x:auto;margin-bottom:14px;border-radius:var(--radius-lg);border:1px solid var(--bg-3)">
+        <div class="register-scroll-wrap">
           <table id="report-register-table" class="register-table"></table>
         </div>
-        <button class="btn btn-primary w-full" id="btn-export-xlsx">📥 Export to Excel</button>
+        <button class="btn-primary" id="btn-export-xlsx" style="margin-top:12px">📥 Export to Excel</button>
       </div>
-
       <div id="report-empty" class="empty-state">
-        <div class="emoji">📋</div>
-        <h3>No data yet</h3>
-        <p>Select a date range and class, then tap Generate</p>
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">No data yet</div>
+        <div class="empty-sub">Select a date range and tap Generate</div>
       </div>
     </section>
 
-    <!-- SETTINGS ────────────────────────────────────────── -->
+    <!-- SETTINGS -->
     <section id="screen-settings" class="screen">
-      <div class="section-title">Settings</div>
-
-      <div class="settings-section">
-        <div class="settings-section-title">Google Sheets Integration</div>
+      <div class="sec-label">Google Sheets</div>
+      <div class="ct-card" style="margin-bottom:14px">
+        <div class="field-group"><div class="field-lbl">Apps Script URL</div><input type="url" id="set-gas-url" class="ct-input" placeholder="https://script.google.com/macros/s/…/exec" /></div>
+      </div>
+      <div class="sec-label">Instructor</div>
+      <div class="ct-card" style="margin-bottom:14px">
+        <div class="field-group" style="margin-bottom:10px"><div class="field-lbl">Your Name</div><input type="text" id="set-instructor" class="ct-input" placeholder="Instructor name" /></div>
+        <div class="field-group"><div class="field-lbl">Classes (comma-separated)</div><input type="text" id="set-classes" class="ct-input" placeholder="Computer Science, Business Admin" /></div>
+      </div>
+      <div class="sec-label">Sync</div>
+      <div class="ct-card" style="margin-bottom:14px">
         <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label">Apps Script URL</div>
-            <div class="setting-sub">Your deployed GAS web app URL</div>
-            <input class="setting-input" type="url" id="set-gas-url" placeholder="https://script.google.com/macros/s/…/exec" />
-          </div>
+          <div><div class="setting-lbl">Auto-sync when online</div><div class="setting-sub">Sync pending data on reconnect</div></div>
+          <label class="ct-toggle"><input type="checkbox" id="set-autosync" checked /><span class="ct-toggle-slider"></span></label>
         </div>
       </div>
-
-      <div class="settings-section">
-        <div class="settings-section-title">Instructor</div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label">Instructor Name</div>
-            <input class="setting-input" type="text" id="set-instructor" placeholder="Your name" />
-          </div>
+      <button class="btn-primary" id="btn-save-settings" style="margin-bottom:12px">Save Settings</button>
+      <div class="sec-label">Data</div>
+      <div class="ct-card" style="margin-bottom:14px">
+        <div class="setting-row" style="margin-bottom:10px">
+          <div><div class="setting-lbl">Load Sample Data</div><div class="setting-sub">Populate with demo students</div></div>
+          <button class="btn-ghost btn-sm" id="btn-load-sample">Load</button>
         </div>
         <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label">Class Names</div>
-            <div class="setting-sub">Comma-separated list</div>
-            <input class="setting-input" type="text" id="set-classes" placeholder="Computer Science, Business Admin, Data Science" />
-          </div>
+          <div><div class="setting-lbl">Clear Local Data</div><div class="setting-sub">Remove all cached data</div></div>
+          <button class="btn-danger btn-sm" id="btn-clear-data">Clear</button>
         </div>
       </div>
-
-      <div class="settings-section">
-        <div class="settings-section-title">Sync</div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label">Auto-sync when online</div>
-            <div class="setting-sub">Sync pending data on reconnect</div>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" id="set-autosync" checked />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <button class="btn btn-primary w-full" id="btn-save-settings" style="margin-bottom:12px">💾 Save Settings</button>
-
-      <div class="settings-section">
-        <div class="settings-section-title">Data</div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label">Load Sample Data</div>
-            <div class="setting-sub">Populate with demo students for testing</div>
-          </div>
-          <button class="btn btn-secondary btn-sm" id="btn-load-sample">Load</button>
-        </div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label">Clear Local Data</div>
-            <div class="setting-sub">Remove all cached data from device</div>
-          </div>
-          <button class="btn btn-danger btn-sm" id="btn-clear-data">Clear</button>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:8px">
-        <div style="font-size:12px;color:var(--text-2);line-height:1.7">
-          <strong style="color:var(--text-1)">ClassTrack v1.0</strong><br/>
+      <div class="ct-card">
+        <div style="font-family:var(--f-body);font-size:12px;color:var(--t-muted);line-height:1.8">
+          <strong style="color:var(--t-sec);font-family:var(--f-head);font-weight:700">ClassTrack v2.0</strong><br/>
           PWA · IndexedDB · Google Apps Script<br/>
-          Works offline. Syncs when online.<br/>
-          <a href="https://github.com" style="color:var(--accent)">View on GitHub ↗</a>
+          Works offline. Syncs when online.
         </div>
       </div>
     </section>
 
+  </main>
 
-    <!-- CLASSES ─────────────────────────────────────────── -->
-    <section id="screen-classes" class="screen">
-      <div class="section-title">
-        Classes
-        <span class="badge" id="classes-count">0</span>
-        <button class="btn btn-primary btn-sm" id="btn-add-class" style="margin-left:auto">+ Add Class</button>
+  <!-- ADD STUDENT SHEET -->
+  <div class="sheet-overlay" id="add-student-modal">
+    <div class="bottom-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Add Student</div>
+        <button class="sheet-close" id="btn-close-add-modal">✕</button>
       </div>
-
-      <div id="classes-list">
-        <div class="spinner"></div>
+      <div class="field-row">
+        <div class="field-group" style="grid-column:1/-1"><div class="field-lbl">Full Name <span style="color:var(--danger)">*</span></div><input type="text" id="add-name" class="ct-input" placeholder="Alice Johnson" /></div>
       </div>
-    </section>
-
-    <!-- ADD CLASS MODAL ─────────────────────────────────── -->
-    <div class="modal-overlay" id="add-class-modal">
-      <div class="modal">
-        <div class="modal-handle"></div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-          <h3 style="margin:0" id="class-modal-title">Add Class</h3>
-          <button id="btn-close-class-modal" style="color:var(--text-2);font-size:20px;line-height:1">×</button>
+      <div class="field-row" style="margin-top:10px">
+        <div class="field-group"><div class="field-lbl">Student ID</div><input type="text" id="add-studentId" class="ct-input" placeholder="STU009" /></div>
+        <div class="field-group"><div class="field-lbl">Gender</div>
+          <select id="add-gender" class="ct-input"><option value="">— select —</option><option>Female</option><option>Male</option><option>Other</option></select>
         </div>
-        <div class="field-group" style="margin-bottom:14px">
-          <label>Class Name <span style="color:var(--absent)">*</span></label>
-          <input type="text" id="class-name-input" class="profile-edit-input" placeholder="e.g. Computer Science" />
-        </div>
-        <div class="field-group" style="margin-bottom:14px">
-          <label>Description</label>
-          <input type="text" id="class-desc-input" class="profile-edit-input" placeholder="Optional description" />
-        </div>
-        <input type="hidden" id="class-edit-id" value="" />
-        <button class="btn btn-primary w-full" id="btn-confirm-class">Save Class</button>
       </div>
+      <div class="field-row" style="margin-top:10px">
+        <div class="field-group"><div class="field-lbl">Phone</div><input type="tel" id="add-phone" class="ct-input" placeholder="876-555-0100" /></div>
+        <div class="field-group"><div class="field-lbl">Email</div><input type="email" id="add-email" class="ct-input" placeholder="email@example.com" /></div>
+      </div>
+      <div class="field-group" style="margin-top:10px"><div class="field-lbl">Program / Class</div>
+        <select id="add-program" class="ct-input"><option value="">— select class —</option></select>
+      </div>
+      <div class="field-group" style="margin-top:10px"><div class="field-lbl">Workplace</div><input type="text" id="add-workplace" class="ct-input" placeholder="Employer / Organization" /></div>
+      <button class="btn-primary" id="btn-confirm-add-student" style="margin-top:14px">Save Student</button>
     </div>
+  </div>
 
-  </main><!-- /main -->
+  <!-- ADD CLASS SHEET -->
+  <div class="sheet-overlay" id="add-class-modal">
+    <div class="bottom-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title" id="class-modal-title">Add Class</div>
+        <button class="sheet-close" id="btn-close-class-modal">✕</button>
+      </div>
+      <div class="field-group" style="margin-bottom:10px"><div class="field-lbl">Class Name <span style="color:var(--danger)">*</span></div><input type="text" id="class-name-input" class="ct-input" placeholder="e.g. Computer Science" /></div>
+      <div class="field-group" style="margin-bottom:14px"><div class="field-lbl">Description</div><input type="text" id="class-desc-input" class="ct-input" placeholder="Optional description" /></div>
+      <input type="hidden" id="class-edit-id" value="" />
+      <button class="btn-primary" id="btn-confirm-class">Save Class</button>
+    </div>
+  </div>
 
-  <!-- ── Bottom Nav ────────────────────────────────────── -->
-  <nav id="bottom-nav">
-    <button class="nav-item active" data-screen="dashboard">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-      </svg>
-      <span>Home</span>
-    </button>
-    <button class="nav-item" data-screen="attendance">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-      </svg>
-      <span>Attend</span>
-    </button>
-    <button class="nav-item" data-screen="students">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
-      </svg>
-      <span>Students</span>
-    </button>
-    <button class="nav-item" data-screen="classes">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-      </svg>
-      <span>Classes</span>
-    </button>
-    <button class="nav-item" data-screen="reports">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
-        <line x1="6" y1="20" x2="6" y2="14"/>
-      </svg>
-      <span>Reports</span>
-    </button>
-    <button class="nav-item" data-screen="settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-      </svg>
-      <span>Settings</span>
-    </button>
-  </nav>
+  <!-- NOTE SHEET -->
+  <div class="sheet-overlay" id="note-sheet-modal">
+    <div class="bottom-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Add Note — <span id="note-sheet-name"></span></div>
+        <button class="sheet-close" id="btn-close-note-sheet">✕</button>
+      </div>
+      <div class="field-group" style="margin-bottom:14px">
+        <div class="field-lbl">Note</div>
+        <input type="text" id="note-sheet-input" class="ct-input" placeholder="e.g. arrived late, left early, medical…" />
+      </div>
+      <button class="btn-primary" id="btn-save-note-sheet">Save Note</button>
+    </div>
+  </div>
 
-</div><!-- /#app -->
+</div>
 
-<!-- Toast container -->
 <div id="toast-container"></div>
 
 <script src="app.js"></script>

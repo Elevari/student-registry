@@ -398,10 +398,20 @@ async function upsertPendingItem(type, entityId, payload) {
 ───────────────────────────────────────────────────────────── */
 function setSyncState(state, label) {
   const badge = document.getElementById('sync-badge');
-  badge.className = '';
+  badge.className = state;
   badge.id = 'sync-badge';
-  badge.classList.add(state);
-  badge.querySelector('span').textContent = label;
+  const span = badge.querySelector('span');
+  if (span) span.textContent = label;
+  // Update dashboard sync bar color
+  const bar = document.getElementById('dash-sync-bar');
+  const dot = document.getElementById('dash-sync-dot');
+  const onlineBadge = document.getElementById('dash-online-badge');
+  if (bar) bar.style.background = state === 'offline' ? 'var(--danger)' : state === 'syncing' ? 'var(--warn)' : 'var(--lime)';
+  if (dot) dot.style.background = state === 'offline' ? 'var(--danger)' : state === 'syncing' ? 'var(--warn)' : 'var(--lime)';
+  if (onlineBadge) {
+    onlineBadge.textContent = label;
+    onlineBadge.className = 'badge ' + (state === 'offline' ? 'danger-badge' : state === 'syncing' ? 'orange-badge' : 'lime-badge');
+  }
 }
 
 function toast(msg, type = '') {
@@ -415,14 +425,12 @@ function toast(msg, type = '') {
 
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const screen = document.getElementById(`screen-${name}`);
+  document.querySelectorAll('.tab').forEach(n => n.classList.remove('active'));
+  const screen = document.getElementById('screen-' + name);
   if (screen) screen.classList.add('active');
-  const nav = document.querySelector(`.nav-item[data-screen="${name}"]`);
-  if (nav) nav.classList.add('active');
+  const tab = document.querySelector('.tab[data-screen="' + name + '"]');
+  if (tab) tab.classList.add('active');
   APP.currentScreen = name;
-  const titles = { dashboard:'ClassTrack', attendance:'Attendance', students:'Students', classes:'Classes', reports:'Reports', settings:'Settings', profile:'' };
-  document.getElementById('topbar-title').textContent = titles[name] || '';
   if (name === 'dashboard')  refreshDashboard();
   if (name === 'attendance') initAttendance();
   if (name === 'students')   renderStudentList();
@@ -466,10 +474,12 @@ async function refreshDashboard() {
   document.getElementById('dash-total').textContent   = students.length;
   document.getElementById('dash-present').textContent = todayAtt.filter(a => a.status === 'P').length;
   document.getElementById('dash-absent').textContent  = todayAtt.filter(a => a.status === 'A').length;
+  document.getElementById('dash-late').textContent    = pending.length;
   document.getElementById('dash-date').textContent    = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
   const pendingEl = document.getElementById('dash-pending');
-  pendingEl.textContent = pending.length ? `${pending.length} unsynced` : 'All synced';
-  pendingEl.className   = pending.length ? 'pending-badge' : 'tag';
+  if (pendingEl) {
+    pendingEl.textContent = pending.length ? pending.length + ' records unsynced' : 'All synced';
+  }
 
   // Recent activity section removed per user request
 }
@@ -545,21 +555,21 @@ async function renderAttendanceList() {
   list.innerHTML = students.map(s => {
     const st = attState[s.id] || { status: '', note: '' };
     return `
-      <div class="student-row is-${st.status === 'P' ? 'present' : st.status === 'A' ? 'absent' : ''}" id="srow-${s.id}">
-        <div class="student-avatar">${initials(s.name)}</div>
-        <div class="student-info">
-          <div class="name">${escHtml(s.name)}</div>
-          <div class="meta">${escHtml(s.program||'')}${s.program && s.studentId ? ' · ' : ''}${escHtml(s.studentId||'')}</div>
+      <div class="att-row is-${st.status === 'P' ? 'present' : st.status === 'A' ? 'absent' : ''}" id="srow-${s.id}">
+        <div class="av-sm">${initials(s.name)}</div>
+        <div class="att-info">
+          <div class="att-name">${escHtml(s.name)}</div>
+          <div class="att-meta">${escHtml(s.studentId||'')}${s.studentId && s.program ? ' · ' : ''}${escHtml(s.program||'')}</div>
         </div>
-        <div class="att-pills">
-          <button class="att-pill ${st.status==='P'?'active':''}" data-status="P" data-sid="${s.id}" title="Present">P</button>
-          <button class="att-pill ${st.status==='A'?'active':''}" data-status="A" data-sid="${s.id}" title="Absent">A</button>
+        <div class="pa-group">
+          <button class="pa-btn ${st.status==='P'?'p-on':''}" data-status="P" data-sid="${s.id}">P</button>
+          <button class="pa-btn ${st.status==='A'?'a-on':''}" data-status="A" data-sid="${s.id}">A</button>
         </div>
-        <button class="note-toggle ${st.note ? 'has-note' : ''}" data-sid="${s.id}" title="${st.note ? 'Edit note' : 'Add note'}">📝</button>
-        <button class="student-profile-link" data-sid="${s.id}" title="View Profile">›</button>
+        <button class="note-btn ${st.note ? 'has-note' : ''}" data-sid="${s.id}" title="${st.note ? 'Edit note' : 'Add note'}">📝</button>
+        <button class="student-profile-link" data-sid="${s.id}" title="View Profile" style="width:28px;height:28px;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--t-sec);font-size:16px;flex-shrink:0;transition:var(--transition)">›</button>
       </div>
       <div class="att-note-row ${st.note ? 'open' : ''}" id="note-row-${s.id}">
-        <input type="text" class="att-note-input" id="note-${s.id}" placeholder="Note (e.g. arrived late, left early, excused…)" value="${escHtml(st.note)}" data-sid="${s.id}" />
+        <input type="text" class="ct-input att-note-input" id="note-${s.id}" placeholder="Note (e.g. arrived late, left early…)" value="${escHtml(st.note)}" data-sid="${s.id}" style="font-size:.8rem;padding:.6rem .8rem" />
       </div>`;
   }).join('');
 
@@ -570,10 +580,10 @@ function updateAttSummary() {
   const p = Object.values(attState).filter(v => v.status === 'P').length;
   const a = Object.values(attState).filter(v => v.status === 'A').length;
   const u = Object.values(attState).filter(v => !v.status).length;
-  document.getElementById('att-summary').innerHTML = `
-    <div class="att-summary-pill P">Present <strong>${p}</strong></div>
-    <div class="att-summary-pill A">Absent <strong>${a}</strong></div>
-    ${u ? `<div class="att-summary-pill" style="background:var(--bg-3);color:var(--text-2)">Unmarked <strong>${u}</strong></div>` : ''}`;
+  document.getElementById('att-summary').innerHTML =
+    `<div class="att-summary-pill P">Present <strong>${p}</strong></div>` +
+    `<div class="att-summary-pill A">Absent <strong>${a}</strong></div>` +
+    (u ? `<div class="att-summary-pill" style="background:var(--surface);color:var(--t-muted);border:1px solid var(--border)">Unmarked <strong>${u}</strong></div>` : '');
 }
 
 function showSavedIndicator(sid) {
@@ -590,7 +600,7 @@ function showSavedIndicator(sid) {
 }
 
 function handleAttPill(e) {
-  const btn    = e.target.closest('.att-pill');
+  const btn    = e.target.closest('.pa-btn');
   const sid    = btn.dataset.sid;
   const status = btn.dataset.status;
   if (!attState[sid]) attState[sid] = { status: '', note: '' };
@@ -599,7 +609,7 @@ function handleAttPill(e) {
   // Update UI immediately
   const row = document.getElementById(`srow-${sid}`);
   row.className = `student-row is-${status === 'P' ? 'present' : 'absent'}`;
-  row.querySelectorAll('.att-pill').forEach(p => p.classList.toggle('active', p.dataset.status === status));
+  row.querySelectorAll('.pa-btn').forEach(p => { p.classList.remove('p-on','a-on'); if(p.dataset.status===status) p.classList.add(status==='P'?'p-on':'a-on'); });
   updateAttSummary();
 
   // Auto-save this student's record right away
@@ -612,19 +622,25 @@ function handleAttPill(e) {
         // Re-highlight the active pill to confirm save
         const row = document.getElementById(`srow-${sid}`);
         if (row) {
-          const activePill = row.querySelector(`.att-pill[data-status="${status}"]`);
-          if (activePill) activePill.classList.add('active', 'saved');
+          const activePill = row.querySelector(`.pa-btn[data-status="${status}"]`);
+          if (activePill) activePill.classList.add('saved');
         }
       });
   }
 }
 
 function handleNoteToggle(e) {
-  const sid     = e.target.closest('.note-toggle').dataset.sid;
-  const noteRow = document.getElementById(`note-row-${sid}`);
-  noteRow.classList.toggle('open');
-  if (noteRow.classList.contains('open')) {
-    document.getElementById(`note-${sid}`).focus();
+  const btn = e.target.closest('.note-btn');
+  if (!btn) return;
+  const sid = btn.dataset.sid;
+  // toggle inline note row
+  const noteRow = document.getElementById('note-row-' + sid);
+  if (noteRow) {
+    noteRow.classList.toggle('open');
+    if (noteRow.classList.contains('open')) {
+      const inp = document.getElementById('note-' + sid);
+      if (inp) inp.focus();
+    }
   }
 }
 
@@ -636,7 +652,7 @@ function handleNoteInput(e) {
   const sid   = input.dataset.sid;
   if (!attState[sid]) attState[sid] = { status: '', note: '' };
   attState[sid].note = input.value;
-  const btn = document.querySelector(`.note-toggle[data-sid="${sid}"]`);
+  const btn = document.querySelector(`.note-btn[data-sid="${sid}"]`);
   if (btn) btn.classList.toggle('has-note', !!input.value);
 
   // Auto-save note after 800ms of no typing
@@ -695,16 +711,16 @@ async function renderStudentList(query = '') {
   const allAtt = await dbGetAll(STORES.attendance);
   list.innerHTML = students.map(s => {
     const sAtt = allAtt.filter(a => a.studentId === s.id);
-    return `<div class="student-card" data-sid="${s.id}">
-      <div class="student-card-avatar">${initials(s.name)}</div>
-      <div class="student-card-body">
-        <div class="student-card-name">${escHtml(s.name)}</div>
-        <div class="student-card-meta">
-          ${s.program ? `<span>🎓 ${escHtml(s.program)}</span>` : ''}
-          ${s.email   ? `<span>✉️ ${escHtml(s.email)}</span>`   : ''}
-          ${s.phone   ? `<span>📱 ${escHtml(s.phone)}</span>`   : ''}
-        </div>
+    const barColor = s.program ? 'var(--lime)' : 'var(--warn)';
+    const abbr = s.program ? s.program.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,3) : '?';
+    return `<div class="entry-card" data-sid="${s.id}">
+      <div class="entry-bar" style="background:${barColor}"></div>
+      <div class="av">${initials(s.name)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="entry-name">${escHtml(s.name)}</div>
+        <div class="entry-sub">${escHtml(s.studentId||'')}${s.studentId && s.email ? ' · ' : ''}${escHtml(s.email||'')}</div>
       </div>
+      <span class="badge lime-badge">${escHtml(abbr)}</span>
     </div>`;
   }).join('');
 }
@@ -750,11 +766,11 @@ async function showProfile(studentId) {
     histEl.innerHTML = '<div class="text-muted" style="font-size:13px;padding:12px 0">No attendance records yet</div>';
   } else {
     histEl.innerHTML = sAtt.slice(0, 40).map(a => `
-      <div class="att-history-item">
-        <div class="att-date">${niceDate(a.date)}</div>
-        <div class="att-status-badge ${a.status}">${a.status === 'P' ? 'Present' : 'Absent'}</div>
-        ${a.note ? `<div class="att-history-note">${escHtml(a.note)}</div>` : ''}
-        ${!a._synced ? '<span class="pending-badge">⏳</span>' : ''}
+      <div class="att-hist-row">
+        <div class="att-hist-date">${niceDate(a.date)}</div>
+        <span class="badge ${a.status === 'P' ? 'lime-badge' : 'danger-badge'}">${a.status === 'P' ? 'Present' : 'Absent'}</span>
+        ${a.note ? `<div class="att-hist-note">${escHtml(a.note)}</div>` : ''}
+        ${!a._synced ? '<div class="pending-dot" title="Unsynced"></div>' : ''}
       </div>`).join('');
   }
 
@@ -1058,17 +1074,15 @@ async function renderClasses() {
     });
     const sessions = [...new Set(clsAtt.map(a => a.date))].length;
     return `<div class="class-card">
+      <div class="entry-bar lime-bar" style="background:var(--lime)"></div>
       <div class="class-icon">🎓</div>
-      <div class="class-body">
+      <div style="flex:1;min-width:0">
         <div class="class-name">${escHtml(cls.name)}</div>
-        <div class="class-meta">
-          ${enrolled} student${enrolled !== 1 ? 's' : ''} · ${sessions} session${sessions !== 1 ? 's' : ''}
-          ${cls.description ? ' · ' + escHtml(cls.description) : ''}
-        </div>
+        <div class="class-meta">${enrolled} student${enrolled !== 1 ? 's' : ''} · ${sessions} session${sessions !== 1 ? 's' : ''}${cls.description ? ' · ' + escHtml(cls.description) : ''}</div>
       </div>
       <div class="class-actions">
-        <button class="class-action-btn" data-edit-class="${escHtml(cls.id)}" title="Edit">✏️</button>
-        <button class="class-action-btn danger" data-delete-class="${escHtml(cls.id)}" title="Delete">🗑</button>
+        <button class="class-act-btn" data-edit-class="${escHtml(cls.id)}" title="Edit">✏️</button>
+        <button class="class-act-btn del" data-delete-class="${escHtml(cls.id)}" title="Delete">🗑</button>
       </div>
     </div>`;
   }).join('');
@@ -1231,11 +1245,11 @@ function handleOffline() {
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   APP.installPrompt = e;
-  document.getElementById('btn-install').classList.add('show');
+  document.getElementById('btn-install').style.display = 'flex';
 });
 window.addEventListener('appinstalled', () => {
   APP.installPrompt = null;
-  document.getElementById('btn-install').classList.remove('show');
+  document.getElementById('btn-install').style.display = 'none';
   toast('App installed ✓', 'success');
 });
 
@@ -1254,10 +1268,14 @@ async function registerSW() {
    EVENT BINDING
 ───────────────────────────────────────────────────────────── */
 function bindEvents() {
-  document.querySelectorAll('.nav-item[data-screen]').forEach(el =>
+  document.querySelectorAll('.tab[data-screen]').forEach(el =>
     el.addEventListener('click', () => showScreen(el.dataset.screen))
   );
 
+  document.getElementById('btn-hdr-sync').addEventListener('click', () => {
+    if (!APP.settings.gasUrl) { toast('Configure GAS URL in Settings', 'error'); return; }
+    syncRoster(); syncPendingAttendance();
+  });
   document.getElementById('btn-install').addEventListener('click', async () => {
     if (!APP.installPrompt) return;
     APP.installPrompt.prompt();
@@ -1267,8 +1285,8 @@ function bindEvents() {
 
   // Attendance events
   document.getElementById('att-list').addEventListener('click', e => {
-    if (e.target.closest('.att-pill'))             { handleAttPill(e);    return; }
-    if (e.target.closest('.note-toggle'))          { handleNoteToggle(e); return; }
+    if (e.target.closest('.pa-btn'))             { handleAttPill(e);    return; }
+    if (e.target.closest('.note-btn'))          { handleNoteToggle(e); return; }
     if (e.target.closest('.student-profile-link')) { showProfile(e.target.closest('.student-profile-link').dataset.sid); }
   });
   document.getElementById('att-list').addEventListener('input', e => {
