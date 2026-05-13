@@ -885,20 +885,7 @@ async function saveSettings() {
    SAMPLE DATA
 ───────────────────────────────────────────────────────────── */
 async function loadSampleData() {
-  const existing = await dbGetAll(STORES.students);
-  if (existing.length) return;
-  const sample = [
-    { id:'s001', studentId:'STU001', name:'Alice Johnson',  gender:'Female', phone:'876-555-0101', email:'alice@example.com',  program:'Computer Science', workplace:'TechCorp',    notes:'', observations:'', followup:'' },
-    { id:'s002', studentId:'STU002', name:'Bob Williams',   gender:'Male',   phone:'876-555-0102', email:'bob@example.com',    program:'Computer Science', workplace:'StartupX',    notes:'', observations:'', followup:'' },
-    { id:'s003', studentId:'STU003', name:'Carol Brown',    gender:'Female', phone:'876-555-0103', email:'carol@example.com',  program:'Business Admin',   workplace:'RetailCo',    notes:'', observations:'', followup:'' },
-    { id:'s004', studentId:'STU004', name:'David Lee',      gender:'Male',   phone:'876-555-0104', email:'david@example.com',  program:'Computer Science', workplace:'Freelance',   notes:'', observations:'', followup:'' },
-    { id:'s005', studentId:'STU005', name:'Emma Davis',     gender:'Female', phone:'876-555-0105', email:'emma@example.com',   program:'Business Admin',   workplace:'FinanceJA',   notes:'', observations:'', followup:'' },
-    { id:'s006', studentId:'STU006', name:'Frank Miller',   gender:'Male',   phone:'876-555-0106', email:'frank@example.com',  program:'Data Science',     workplace:'Analytics',   notes:'', observations:'', followup:'' },
-    { id:'s007', studentId:'STU007', name:'Grace Wilson',   gender:'Female', phone:'876-555-0107', email:'grace@example.com',  program:'Data Science',     workplace:'Govt Office', notes:'', observations:'', followup:'' },
-    { id:'s008', studentId:'STU008', name:'Henry Taylor',   gender:'Male',   phone:'876-555-0108', email:'henry@example.com',  program:'Computer Science', workplace:'ITFirm',      notes:'', observations:'', followup:'' },
-  ];
-  for (const s of sample) await dbPut(STORES.students, s);
-  toast('Sample data loaded', 'success');
+  // Sample data removed — add students via Google Sheets or the + Add button
 }
 
 /* ─────────────────────────────────────────────────────────────
