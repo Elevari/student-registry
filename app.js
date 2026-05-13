@@ -566,7 +566,7 @@ async function renderAttendanceList() {
           <button class="pa-btn ${st.status==='A'?'a-on':''}" data-status="A" data-sid="${s.id}">A</button>
         </div>
         <button class="note-btn ${st.note ? 'has-note' : ''}" data-sid="${s.id}" title="${st.note ? 'Edit note' : 'Add note'}">📝</button>
-        <button class="student-profile-link" data-sid="${s.id}" title="View Profile" style="width:28px;height:28px;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--t-sec);font-size:16px;flex-shrink:0;transition:var(--transition)">›</button>
+        <button class="student-profile-link" data-sid="${s.id}" title="Profile" style="width:26px;height:26px;min-width:26px;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--t-sec);font-size:14px;flex-shrink:0;transition:var(--transition)">›</button>
       </div>
       <div class="att-note-row ${st.note ? 'open' : ''}" id="note-row-${s.id}">
         <input type="text" class="ct-input att-note-input" id="note-${s.id}" placeholder="Note (e.g. arrived late, left early…)" value="${escHtml(st.note)}" data-sid="${s.id}" style="font-size:.8rem;padding:.6rem .8rem" />
