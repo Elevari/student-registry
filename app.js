@@ -635,8 +635,7 @@ function handleAttPill(e) {
         // Re-highlight the active pill to confirm save
         const row = document.getElementById(`srow-${sid}`);
         if (row) {
-          const activePill = row.querySelector(`.pa-btn[data-status="${status}"]`);
-          if (activePill) activePill.classList.add('saved');
+  
         }
       });
   }
