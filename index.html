@@ -75,39 +75,7 @@
         <div class="stat-card"><div class="stat-val red" id="dash-absent">0</div><div class="stat-lbl">Absent today</div></div>
         <div class="stat-card"><div class="stat-val muted" id="dash-late">0</div><div class="stat-lbl">Unsynced</div></div>
       </div>
-      <div class="sec-label">Quick actions</div>
-      <div class="qa-grid">
-        <button class="qa-btn lime-bar" id="qa-take-att">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--lime)"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-          <div class="qa-label">Take Attendance</div>
-          <div class="qa-sub">Mark today</div>
-        </button>
-        <button class="qa-btn orange-bar" id="qa-view-students">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--warn)"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-          <div class="qa-label">View Students</div>
-          <div class="qa-sub">Roster</div>
-        </button>
-        <button class="qa-btn lime-bar" id="qa-reports">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--lime)"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          <div class="qa-label">Reports</div>
-          <div class="qa-sub">Class register</div>
-        </button>
-        <button class="qa-btn orange-bar" id="qa-sync">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--warn)"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-          <div class="qa-label">Sync Now</div>
-          <div class="qa-sub">Pull latest</div>
-        </button>
-      </div>
-      <div class="sec-label">Sync status</div>
-      <div class="entry-card">
-        <div class="entry-bar" id="dash-sync-bar" style="background:var(--lime)"></div>
-        <div class="sync-dot-wrap"><div class="sync-dot" id="dash-sync-dot"></div></div>
-        <div style="flex:1">
-          <div class="entry-name">Sync status</div>
-          <div class="entry-sub" id="dash-pending">Checking…</div>
-        </div>
-        <span class="badge lime-badge" id="dash-online-badge">Online</span>
-      </div>
+
     </section>
 
     <!-- ATTENDANCE -->
@@ -123,7 +91,7 @@
         <div style="display:flex;gap:8px;margin-top:10px">
           <button class="btn-primary" id="btn-mark-all-present" style="font-size:.72rem;padding:10px">✓ Mark All Present</button>
           <button class="btn-secondary" id="btn-save-att" style="font-size:.72rem;padding:10px">💾 Save All</button>
-          <button class="btn-ghost" id="btn-sync-roster" style="font-size:.72rem;padding:10px">⟳ Sync</button>
+
         </div>
       </div>
       <div id="att-edit-banner" class="edit-banner" style="display:none">
@@ -140,7 +108,7 @@
         <div class="sec-label" style="margin:0">Students <span class="count-badge" id="student-count">0</span></div>
         <div style="display:flex;gap:8px">
           <button class="btn-primary btn-sm" id="btn-add-student">+ Add</button>
-          <button class="btn-ghost btn-sm" id="btn-sync-roster-2">⟳ Sync</button>
+
         </div>
       </div>
       <div class="search-wrap">
@@ -242,11 +210,7 @@
       <div class="ct-card" style="margin-bottom:14px">
         <div class="field-group"><div class="field-lbl">Apps Script URL</div><input type="url" id="set-gas-url" class="ct-input" placeholder="https://script.google.com/macros/s/…/exec" /></div>
       </div>
-      <div class="sec-label">Instructor</div>
-      <div class="ct-card" style="margin-bottom:14px">
-        <div class="field-group" style="margin-bottom:10px"><div class="field-lbl">Your Name</div><input type="text" id="set-instructor" class="ct-input" placeholder="Instructor name" /></div>
-        <div class="field-group"><div class="field-lbl">Classes (comma-separated)</div><input type="text" id="set-classes" class="ct-input" placeholder="Computer Science, Business Admin" /></div>
-      </div>
+
       <div class="sec-label">Sync</div>
       <div class="ct-card" style="margin-bottom:14px">
         <div class="setting-row">
@@ -255,17 +219,7 @@
         </div>
       </div>
       <button class="btn-primary" id="btn-save-settings" style="margin-bottom:12px">Save Settings</button>
-      <div class="sec-label">Data</div>
-      <div class="ct-card" style="margin-bottom:14px">
-        <div class="setting-row" style="margin-bottom:10px">
-          <div><div class="setting-lbl">Load Sample Data</div><div class="setting-sub">Populate with demo students</div></div>
-          <button class="btn-ghost btn-sm" id="btn-load-sample">Load</button>
-        </div>
-        <div class="setting-row">
-          <div><div class="setting-lbl">Clear Local Data</div><div class="setting-sub">Remove all cached data</div></div>
-          <button class="btn-danger btn-sm" id="btn-clear-data">Clear</button>
-        </div>
-      </div>
+
       <div class="ct-card">
         <div style="font-family:var(--f-body);font-size:12px;color:var(--t-muted);line-height:1.8">
           <strong style="color:var(--t-sec);font-family:var(--f-head);font-weight:700">ClassTrack v2.0</strong><br/>
