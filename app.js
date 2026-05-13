@@ -250,8 +250,11 @@ async function syncRoster() {
 
     toast('Synced ✓', 'success');
     setSyncState('online', 'Online');
-    // Refresh whatever screen is open
-    if (APP.currentScreen === 'attendance') await renderAttendanceList();
+    // Always re-render attendance screen after sync so P/A reflects sheet data
+    if (APP.currentScreen === 'attendance') {
+      attState = {}; // clear so synced records seed fresh
+      await renderAttendanceList();
+    }
     refreshDashboard();
   } catch (err) {
     console.error('[Sync] Failed:', err);
@@ -537,9 +540,11 @@ async function renderAttendanceList() {
   const dayRecs = allAtt.filter(a => a.date === date && sIdSet.has(a.studentId));
   console.log('[Attendance] date:', date, 'allAtt:', allAtt.length, 'dayRecs:', dayRecs.length, 'students:', students.length);
 
-  // Seed attState from saved records (don't overwrite live in-session changes)
+  // Always seed attState from saved records — synced data takes priority
   dayRecs.forEach(r => {
-    if (!attState[r.studentId]) {
+    // Only overwrite if the local state is blank (not actively being edited)
+    const existing = attState[r.studentId];
+    if (!existing || !existing.status) {
       attState[r.studentId] = { status: r.status, note: r.note || '' };
     }
   });
@@ -562,9 +567,9 @@ async function renderAttendanceList() {
           <div style="font-family:var(--f-head);font-weight:700;font-size:12px;color:var(--t-pri);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.name)}</div>
           <div style="font-size:10px;color:var(--t-muted);font-weight:300;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.studentId||'')}${s.studentId && s.program ? ' · ' : ''}${escHtml(s.program||'')}</div>
         </div>
-        <div style="display:flex;border:1.5px solid #2a2a35;border-radius:9px;overflow:hidden;background:#1f1f27;flex-shrink:0;width:70px;min-width:70px">
-          <button class="pa-btn" data-status="P" data-sid="${s.id}" style="width:35px;height:28px;min-width:35px;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;flex-shrink:0;${st.status==='P'?'background:#c8f04e;color:#0e0e11':'background:transparent;color:#5e5d75'}">P</button>
-          <button class="pa-btn" data-status="A" data-sid="${s.id}" style="width:35px;height:28px;min-width:35px;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;flex-shrink:0;${st.status==='A'?'background:#f04e6a;color:#fff':'background:transparent;color:#5e5d75'}">A</button>
+        <div style="display:flex;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface);flex-shrink:0;width:70px;min-width:70px">
+          <button class="pa-btn ${st.status==='P'?'p-on':''}" data-status="P" data-sid="${s.id}" style="width:35px;height:28px;min-width:35px;font-family:var(--f-head);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;flex-shrink:0">P</button>
+          <button class="pa-btn ${st.status==='A'?'a-on':''}" data-status="A" data-sid="${s.id}" style="width:35px;height:28px;min-width:35px;font-family:var(--f-head);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;flex-shrink:0">A</button>
         </div>
         <button class="note-btn ${st.note ? 'has-note' : ''}" data-sid="${s.id}" style="width:28px;height:28px;min-width:28px;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;color:var(--t-muted);opacity:${st.note?'1':'0.5'};flex-shrink:0">📝</button>
         <button class="student-profile-link" data-sid="${s.id}" style="width:26px;height:26px;min-width:26px;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--t-sec);font-size:14px;flex-shrink:0;cursor:pointer">›</button>
@@ -610,14 +615,11 @@ function handleAttPill(e) {
   // Update UI immediately
   const row = document.getElementById('srow-' + sid);
   if (row) {
-    row.style.borderLeft = status === 'P' ? '3px solid #c8f04e' : '3px solid #f04e6a';
+    row.style.borderLeft = status === 'P' ? '3px solid var(--lime)' : '3px solid var(--danger)';
     row.querySelectorAll('.pa-btn').forEach(p => {
+      p.classList.remove('p-on','a-on');
       if (p.dataset.status === status) {
-        p.style.background = status === 'P' ? '#c8f04e' : '#f04e6a';
-        p.style.color      = status === 'P' ? '#0e0e11' : '#fff';
-      } else {
-        p.style.background = 'transparent';
-        p.style.color      = '#5e5d75';
+        p.classList.add(status === 'P' ? 'p-on' : 'a-on');
       }
     });
   }
