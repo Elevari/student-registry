@@ -479,10 +479,7 @@ async function refreshDashboard() {
   document.getElementById('dash-absent').textContent  = todayAtt.filter(a => a.status === 'A').length;
   document.getElementById('dash-late').textContent    = pending.length;
   document.getElementById('dash-date').textContent    = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
-  const pendingEl = document.getElementById('dash-pending');
-  if (pendingEl) {
-    pendingEl.textContent = pending.length ? pending.length + ' records unsynced' : 'All synced';
-  }
+
 
   // Recent activity section removed per user request
 }
@@ -1216,16 +1213,12 @@ async function exportCSV() {
 ───────────────────────────────────────────────────────────── */
 function renderSettings() {
   document.getElementById('set-gas-url').value    = APP.settings.gasUrl || '';
-  document.getElementById('set-instructor').value = APP.settings.instructorName || '';
-  document.getElementById('set-classes').value    = (APP.settings.classes||[]).join(', ');
   document.getElementById('set-autosync').checked = APP.settings.autoSync !== false;
 }
 
 async function saveSettings() {
-  await saveSetting('gasUrl',         document.getElementById('set-gas-url').value.trim());
-  await saveSetting('instructorName', document.getElementById('set-instructor').value.trim());
-  await saveSetting('classes',        document.getElementById('set-classes').value.split(',').map(c=>c.trim()).filter(Boolean));
-  await saveSetting('autoSync',       document.getElementById('set-autosync').checked);
+  await saveSetting('gasUrl',   document.getElementById('set-gas-url').value.trim());
+  await saveSetting('autoSync', document.getElementById('set-autosync').checked);
   toast('Settings saved ✓', 'success');
 }
 
@@ -1317,20 +1310,12 @@ function bindEvents() {
     renderAttendanceList();
   });
   document.getElementById('btn-save-att').addEventListener('click', handleSaveAttendance);
-  document.getElementById('btn-sync-roster').addEventListener('click', () => {
-    if (!APP.settings.gasUrl) { toast('Set GAS URL in Settings first', 'error'); return; }
-    syncRoster();
-  });
 
   // Students
   document.getElementById('student-search').addEventListener('input', e => renderStudentList(e.target.value));
   document.getElementById('student-list').addEventListener('click', e => {
     const card = e.target.closest('.entry-card');
     if (card) showProfile(card.dataset.sid);
-  });
-  document.getElementById('btn-sync-roster-2').addEventListener('click', () => {
-    if (!APP.settings.gasUrl) { toast('Set GAS URL in Settings first', 'error'); return; }
-    syncRoster().then(() => renderStudentList());
   });
   document.getElementById('btn-add-student').addEventListener('click', openAddStudentModal);
   document.getElementById('btn-close-add-modal').addEventListener('click', closeAddStudentModal);
@@ -1349,19 +1334,6 @@ function bindEvents() {
 
   // Settings
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
-  document.getElementById('btn-load-sample').addEventListener('click', async () => {
-    await dbClear(STORES.students);
-    await loadSampleData();
-    renderStudentList(); refreshDashboard();
-  });
-  document.getElementById('btn-clear-data').addEventListener('click', async () => {
-    if (!confirm('Clear ALL local data? This cannot be undone.')) return;
-    await dbClear(STORES.students);
-    await dbClear(STORES.attendance);
-    await dbClear(STORES.pending);
-    toast('All local data cleared', 'success');
-    refreshDashboard();
-  });
 
   // Classes
   document.getElementById('btn-add-class').addEventListener('click', () => openAddClassModal());
@@ -1377,14 +1349,7 @@ function bindEvents() {
     if (deleteBtn) handleDeleteClass(deleteBtn.dataset.deleteClass);
   });
 
-  // Dashboard quick actions
-  document.getElementById('qa-take-att').addEventListener('click',     () => showScreen('attendance'));
-  document.getElementById('qa-view-students').addEventListener('click',() => showScreen('students'));
-  document.getElementById('qa-reports').addEventListener('click',      () => showScreen('reports'));
-  document.getElementById('qa-sync').addEventListener('click', () => {
-    if (!APP.settings.gasUrl) { toast('Configure GAS URL in Settings', 'error'); return; }
-    syncRoster(); syncPendingAttendance();
-  });
+
 
   window.addEventListener('online',  handleOnline);
   window.addEventListener('offline', handleOffline);
