@@ -172,17 +172,22 @@ async function gasRequest(action, payload = {}) {
 /* Normalize a student object so all keys are consistent camelCase
    regardless of how Google Sheets stored the header */
 function normalizeStudent(raw) {
+  // Map any casing variation to consistent camelCase keys
   const map = {
-    'id':'id', 'studentid':'studentId', 'name':'name', 'gender':'gender',
-    'phone':'phone', 'email':'email', 'program':'program', 'workplace':'workplace',
-    'notes':'notes', 'observations':'observations', 'followup':'followup'
+    'id':'id', 'studentid':'studentId', 'studentId':'studentId',
+    'name':'name', 'gender':'gender', 'phone':'phone', 'email':'email',
+    'program':'program', 'workplace':'workplace', 'notes':'notes',
+    'observations':'observations', 'followup':'followup'
   };
   const out = {};
   Object.keys(raw).forEach(k => {
-    const norm = map[k.toLowerCase()];
-    if (norm) out[norm] = raw[k];
-    else out[k] = raw[k]; // keep unknown fields as-is
+    const trimmed = k.trim(); // remove any accidental spaces
+    const norm = map[trimmed] || map[trimmed.toLowerCase()];
+    if (norm) out[norm] = String(raw[k] || '');
+    else out[trimmed] = raw[k];
   });
+  // Ensure id is always set as the keyPath
+  if (!out.id && out.studentId) out.id = 's' + out.studentId;
   return out;
 }
 
@@ -190,12 +195,40 @@ async function syncRoster() {
   if (!APP.online || !APP.settings.gasUrl) return;
   setSyncState('syncing', 'Syncing…');
   try {
+    // Sync students
     const data = await gasRequest('getStudents');
     if (data.students && Array.isArray(data.students)) {
       await dbClear(STORES.students);
       for (const s of data.students) await dbPut(STORES.students, normalizeStudent(s));
-      toast('Roster synced ✓', 'success');
     }
+
+    // Sync attendance records from Sheets into IndexedDB
+    try {
+      const attData = await gasRequest('getAttendance', {});
+      if (attData.records && Array.isArray(attData.records)) {
+        for (const rec of attData.records) {
+          if (!rec.date || !rec.studentid) continue;
+          const studentId = rec.studentid || rec.studentId || '';
+          const date      = rec.date;
+          // Check if already in local DB
+          const allLocal = await dbGetAll(STORES.attendance);
+          const exists   = allLocal.find(r => r.studentId === studentId && r.date === date);
+          if (!exists) {
+            await dbPut(STORES.attendance, {
+              studentId, date,
+              classId:  rec.classid  || rec.classId  || '',
+              status:   rec.status   || '',
+              note:     rec.note     || '',
+              _synced:  true
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Attendance sync failed:', e.message);
+    }
+
+    toast('Synced ✓', 'success');
     setSyncState('online', 'Online');
   } catch (err) {
     setSyncState('online', 'Online');
