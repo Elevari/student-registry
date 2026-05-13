@@ -10,7 +10,7 @@
    CONSTANTS & STATE
 ───────────────────────────────────────────────────────────── */
 const DB_NAME    = 'classtrack';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORES     = { students: 'students', attendance: 'attendance', pending: 'pending', settings: 'settings', classes: 'classes' };
 
 const APP = {
