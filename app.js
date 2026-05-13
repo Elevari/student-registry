@@ -162,6 +162,8 @@ async function syncPendingAttendance() {
     try {
       if (item.type === 'studentUpdate') {
         await gasRequest('updateStudent', item.payload);
+      } else if (item.type === 'addStudent') {
+        await gasRequest('addStudent', item.payload);
       } else {
         await gasRequest('saveAttendance', item.payload);
       }
@@ -619,6 +621,75 @@ async function renderReports() {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   ADD STUDENT
+───────────────────────────────────────────────────────────── */
+function openAddStudentModal() {
+  // Clear fields
+  ['name','studentId','gender','phone','email','program','workplace'].forEach(f => {
+    const el = document.getElementById(`add-${f}`);
+    if (el) el.value = '';
+  });
+  // Populate program datalist from existing students + settings
+  populateProgramSuggestions();
+  document.getElementById('add-student-modal').classList.add('open');
+  setTimeout(() => document.getElementById('add-name').focus(), 300);
+}
+
+function closeAddStudentModal() {
+  document.getElementById('add-student-modal').classList.remove('open');
+}
+
+async function populateProgramSuggestions() {
+  const students = await dbGetAll(STORES.students);
+  const programs = [...new Set([
+    ...(APP.settings.classes || []),
+    ...students.map(s => s.program).filter(Boolean)
+  ])];
+  const dl = document.getElementById('program-suggestions');
+  dl.innerHTML = programs.map(p => `<option value="${escHtml(p)}">`).join('');
+}
+
+async function handleAddStudent() {
+  const name = document.getElementById('add-name').value.trim();
+  if (!name) { toast('Name is required', 'error'); return; }
+
+  // Generate a unique id
+  const id = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+
+  const student = {
+    id,
+    studentId:   document.getElementById('add-studentId').value.trim(),
+    name,
+    gender:      document.getElementById('add-gender').value,
+    phone:       document.getElementById('add-phone').value.trim(),
+    email:       document.getElementById('add-email').value.trim(),
+    program:     document.getElementById('add-program').value.trim(),
+    workplace:   document.getElementById('add-workplace').value.trim(),
+    notes: '', observations: '', followup: ''
+  };
+
+  await dbPut(STORES.students, student);
+
+  // Sync to Google Sheets if online
+  if (APP.online && APP.settings.gasUrl) {
+    try {
+      await gasRequest('addStudent', student);
+      toast(`${name} added ✓`, 'success');
+    } catch {
+      await dbPut(STORES.pending, { type: 'addStudent', payload: student, ts: Date.now() });
+      toast(`${name} saved offline — will sync later`, 'success');
+    }
+  } else {
+    await dbPut(STORES.pending, { type: 'addStudent', payload: student, ts: Date.now() });
+    toast(`${name} saved offline ✓`, 'success');
+  }
+
+  closeAddStudentModal();
+  renderStudentList();
+  refreshDashboard();
+}
+
+/* ─────────────────────────────────────────────────────────────
    EXPORT CSV
 ───────────────────────────────────────────────────────────── */
 async function exportCSV() {
@@ -768,6 +839,12 @@ function bindEvents() {
   document.getElementById('btn-sync-roster-2').addEventListener('click', () => {
     if (!APP.settings.gasUrl) { toast('Set GAS URL in Settings first', 'error'); return; }
     syncRoster().then(() => renderStudentList());
+  });
+  document.getElementById('btn-add-student').addEventListener('click', openAddStudentModal);
+  document.getElementById('btn-close-add-modal').addEventListener('click', closeAddStudentModal);
+  document.getElementById('btn-confirm-add-student').addEventListener('click', handleAddStudent);
+  document.getElementById('add-student-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('add-student-modal')) closeAddStudentModal();
   });
 
   // Profile

@@ -161,7 +161,10 @@
       <div class="section-title">
         Student Roster
         <span class="badge" id="student-count">0</span>
-        <button class="btn btn-secondary btn-sm" id="btn-sync-roster-2" style="margin-left:auto">🔄 Sync</button>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" id="btn-add-student">+ Add</button>
+          <button class="btn btn-secondary btn-sm" id="btn-sync-roster-2">🔄 Sync</button>
+        </div>
       </div>
 
       <div class="search-bar">
@@ -173,6 +176,56 @@
         <div class="spinner"></div>
       </div>
     </section>
+
+    <!-- ADD STUDENT MODAL ───────────────────────────────── -->
+    <div class="modal-overlay" id="add-student-modal">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+          <h3 style="margin:0">Add Student</h3>
+          <button id="btn-close-add-modal" style="color:var(--text-2);font-size:20px;line-height:1">×</button>
+        </div>
+
+        <div class="profile-edit-grid" style="margin-bottom:14px">
+          <div class="field-group" style="grid-column:1/-1">
+            <label>Full Name <span style="color:var(--absent)">*</span></label>
+            <input type="text" id="add-name" class="profile-edit-input" placeholder="e.g. Alice Johnson" />
+          </div>
+          <div class="field-group">
+            <label>Student ID</label>
+            <input type="text" id="add-studentId" class="profile-edit-input" placeholder="e.g. STU009" />
+          </div>
+          <div class="field-group">
+            <label>Gender</label>
+            <select id="add-gender" class="profile-edit-input">
+              <option value="">— select —</option>
+              <option>Female</option>
+              <option>Male</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Phone</label>
+            <input type="tel" id="add-phone" class="profile-edit-input" placeholder="876-555-0100" />
+          </div>
+          <div class="field-group">
+            <label>Email</label>
+            <input type="email" id="add-email" class="profile-edit-input" placeholder="email@example.com" />
+          </div>
+          <div class="field-group" style="grid-column:1/-1">
+            <label>Program / Class</label>
+            <input type="text" id="add-program" class="profile-edit-input" placeholder="e.g. Computer Science" list="program-suggestions" />
+            <datalist id="program-suggestions"></datalist>
+          </div>
+          <div class="field-group" style="grid-column:1/-1">
+            <label>Workplace</label>
+            <input type="text" id="add-workplace" class="profile-edit-input" placeholder="Employer / Organization" />
+          </div>
+        </div>
+
+        <button class="btn btn-primary w-full" id="btn-confirm-add-student">Save Student</button>
+      </div>
+    </div>
 
     <!-- PROFILE ─────────────────────────────────────────── -->
     <section id="screen-profile" class="screen">

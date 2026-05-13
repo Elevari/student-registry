@@ -129,7 +129,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-display); font-weight: 700; line-height
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--bg-3);
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 .nav-item {
