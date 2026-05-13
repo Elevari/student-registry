@@ -554,19 +554,20 @@ async function renderAttendanceList() {
 
   list.innerHTML = students.map(s => {
     const st = attState[s.id] || { status: '', note: '' };
+    const rowBorder = st.status === 'P' ? 'border-left:3px solid var(--lime)' : st.status === 'A' ? 'border-left:3px solid var(--danger)' : '';
     return `
-      <div class="att-row is-${st.status === 'P' ? 'present' : st.status === 'A' ? 'absent' : ''}" id="srow-${s.id}">
-        <div class="av-sm">${initials(s.name)}</div>
-        <div class="att-info">
-          <div class="att-name">${escHtml(s.name)}</div>
-          <div class="att-meta">${escHtml(s.studentId||'')}${s.studentId && s.program ? ' · ' : ''}${escHtml(s.program||'')}</div>
+      <div id="srow-${s.id}" style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;overflow:hidden;${rowBorder}">
+        <div style="width:34px;height:34px;min-width:34px;border-radius:50%;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--f-head);font-weight:700;font-size:11px;color:var(--lime)">${initials(s.name)}</div>
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div style="font-family:var(--f-head);font-weight:700;font-size:12px;color:var(--t-pri);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.name)}</div>
+          <div style="font-size:10px;color:var(--t-muted);font-weight:300;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.studentId||'')}${s.studentId && s.program ? ' · ' : ''}${escHtml(s.program||'')}</div>
         </div>
-        <div class="pa-group">
-          <button class="pa-btn ${st.status==='P'?'p-on':''}" data-status="P" data-sid="${s.id}">P</button>
-          <button class="pa-btn ${st.status==='A'?'a-on':''}" data-status="A" data-sid="${s.id}">A</button>
+        <div style="display:flex;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface);flex-shrink:0;width:70px;min-width:70px">
+          <button class="pa-btn ${st.status==='P'?'p-on':''}" data-status="P" data-sid="${s.id}" style="width:35px;height:28px;min-width:35px;font-family:var(--f-head);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;border:none;color:var(--t-muted);flex-shrink:0">P</button>
+          <button class="pa-btn ${st.status==='A'?'a-on':''}" data-status="A" data-sid="${s.id}" style="width:35px;height:28px;min-width:35px;font-family:var(--f-head);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;border:none;color:var(--t-muted);flex-shrink:0">A</button>
         </div>
-        <button class="note-btn ${st.note ? 'has-note' : ''}" data-sid="${s.id}" title="${st.note ? 'Edit note' : 'Add note'}">📝</button>
-        <button class="student-profile-link" data-sid="${s.id}" title="Profile" style="width:26px;height:26px;min-width:26px;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--t-sec);font-size:14px;flex-shrink:0;transition:var(--transition)">›</button>
+        <button class="note-btn ${st.note ? 'has-note' : ''}" data-sid="${s.id}" style="width:28px;height:28px;min-width:28px;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;color:var(--t-muted);opacity:${st.note?'1':'0.5'};flex-shrink:0">📝</button>
+        <button class="student-profile-link" data-sid="${s.id}" style="width:26px;height:26px;min-width:26px;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--t-sec);font-size:14px;flex-shrink:0;cursor:pointer">›</button>
       </div>
       <div class="att-note-row ${st.note ? 'open' : ''}" id="note-row-${s.id}">
         <input type="text" class="ct-input att-note-input" id="note-${s.id}" placeholder="Note (e.g. arrived late, left early…)" value="${escHtml(st.note)}" data-sid="${s.id}" style="font-size:.8rem;padding:.6rem .8rem" />
@@ -607,9 +608,20 @@ function handleAttPill(e) {
   attState[sid].status = status;
 
   // Update UI immediately
-  const row = document.getElementById(`srow-${sid}`);
-  row.className = `student-row is-${status === 'P' ? 'present' : 'absent'}`;
-  row.querySelectorAll('.pa-btn').forEach(p => { p.classList.remove('p-on','a-on'); if(p.dataset.status===status) p.classList.add(status==='P'?'p-on':'a-on'); });
+  const row = document.getElementById('srow-' + sid);
+  if (row) {
+    row.style.borderLeft = status === 'P' ? '3px solid var(--lime)' : '3px solid var(--danger)';
+    row.querySelectorAll('.pa-btn').forEach(p => {
+      p.classList.remove('p-on','a-on');
+      p.style.background = 'transparent';
+      p.style.color = 'var(--t-muted)';
+      if (p.dataset.status === status) {
+        p.classList.add(status === 'P' ? 'p-on' : 'a-on');
+        p.style.background = status === 'P' ? 'var(--lime)' : 'var(--danger)';
+        p.style.color = status === 'P' ? '#0e0e11' : '#fff';
+      }
+    });
+  }
   updateAttSummary();
 
   // Auto-save this student's record right away
