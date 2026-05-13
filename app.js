@@ -171,12 +171,15 @@ async function syncPendingAttendance() {
         await gasRequest('saveClass', item.payload);
       } else if (item.type === 'deleteClass') {
         await gasRequest('deleteClass', item.payload);
-      } else {
+      } else if (item.payload) {
         await gasRequest('saveAttendance', item.payload);
       }
       await dbDelete(STORES.pending, item._pendingId);
       synced++;
-    } catch {}
+    } catch (err) {
+      console.warn('Sync failed for item', item._pendingId, err.message);
+      // Leave in pending queue — will retry on next sync
+    }
   }
   if (synced) toast(`Synced ${synced} records ✓`, 'success');
   setSyncState('online', 'Online');
@@ -252,17 +255,34 @@ async function saveStudentProfile(studentId, fields) {
   Object.assign(student, fields);
   await dbPut(STORES.students, student);
 
+  const payload = { id: studentId, ...fields };
+
   if (APP.online && APP.settings.gasUrl) {
     try {
-      await gasRequest('updateStudent', { id: studentId, ...fields });
+      await gasRequest('updateStudent', payload);
       toast('Profile saved ✓', 'success');
     } catch {
-      await dbPut(STORES.pending, { type: 'studentUpdate', payload: { id: studentId, ...fields }, ts: Date.now() });
-      toast('Profile saved offline ✓', 'success');
+      // Failed online — queue for retry
+      await upsertPendingItem('studentUpdate', studentId, payload);
+      toast('Profile saved — will sync shortly', 'success');
     }
   } else {
-    await dbPut(STORES.pending, { type: 'studentUpdate', payload: { id: studentId, ...fields }, ts: Date.now() });
-    toast('Profile saved offline ✓', 'success');
+    // Offline — queue for when connection restores
+    await upsertPendingItem('studentUpdate', studentId, payload);
+    toast('Profile saved offline — will sync when online ✓', 'success');
+  }
+}
+
+/* Upsert a pending item — replaces existing entry of same type+id to avoid duplicates */
+async function upsertPendingItem(type, entityId, payload) {
+  const allPending = await dbGetAll(STORES.pending);
+  const existing   = allPending.find(p => p.type === type && p.entityId === entityId);
+  if (existing) {
+    existing.payload = payload;
+    existing.ts      = Date.now();
+    await dbPut(STORES.pending, existing);
+  } else {
+    await dbPut(STORES.pending, { type, entityId, payload, ts: Date.now() });
   }
 }
 
@@ -334,26 +354,7 @@ async function refreshDashboard() {
   pendingEl.textContent = pending.length ? `${pending.length} unsynced` : 'All synced';
   pendingEl.className   = pending.length ? 'pending-badge' : 'tag';
 
-  const recentEl = document.getElementById('dash-recent');
-  const dates    = [...new Set(allAtt.map(a => a.date))].sort((a,b) => b.localeCompare(a)).slice(0,5);
-  if (!dates.length) {
-    recentEl.innerHTML = '<div class="empty-state"><div class="emoji">📋</div><h3>No records yet</h3><p>Start by taking attendance</p></div>';
-  } else {
-    recentEl.innerHTML = dates.map(date => {
-      const recs  = allAtt.filter(a => a.date === date);
-      const p     = recs.filter(a => a.status === 'P').length;
-      const total = recs.length;
-      const pct   = total ? Math.round(p / total * 100) : 0;
-      return `<div class="card card-sm flex items-center gap-3" style="cursor:pointer" onclick="goToAttDate('${date}')">
-        <div style="flex:1">
-          <div class="fw-bold" style="font-size:14px">${niceDate(date)}</div>
-          <div class="text-muted" style="font-size:12px">${total} students · ${p} present</div>
-        </div>
-        <div class="att-pct ${pct < 70 ? 'danger' : pct < 85 ? 'warn' : ''}">${pct}%</div>
-        <span style="color:var(--accent);font-size:12px;font-weight:600">Edit ›</span>
-      </div>`;
-    }).join('');
-  }
+  // Recent activity section removed per user request
 }
 
 function goToAttDate(date) {
@@ -567,8 +568,6 @@ async function renderStudentList(query = '') {
   const allAtt = await dbGetAll(STORES.attendance);
   list.innerHTML = students.map(s => {
     const sAtt = allAtt.filter(a => a.studentId === s.id);
-    const pct  = sAtt.length ? Math.round(sAtt.filter(a => a.status === 'P').length / sAtt.length * 100) : null;
-    const pctClass = pct === null ? '' : pct < 70 ? 'danger' : pct < 85 ? 'warn' : '';
     return `<div class="student-card" data-sid="${s.id}">
       <div class="student-card-avatar">${initials(s.name)}</div>
       <div class="student-card-body">
@@ -579,7 +578,6 @@ async function renderStudentList(query = '') {
           ${s.phone   ? `<span>📱 ${escHtml(s.phone)}</span>`   : ''}
         </div>
       </div>
-      ${pct !== null ? `<div class="student-card-att"><div class="att-pct ${pctClass}">${pct}%</div><div style="font-size:10px;color:var(--text-2)">attend.</div></div>` : ''}
     </div>`;
   }).join('');
 }
@@ -747,11 +745,11 @@ async function handleAddStudent() {
       await gasRequest('addStudent', student);
       toast(`${name} added ✓`, 'success');
     } catch {
-      await dbPut(STORES.pending, { type: 'addStudent', payload: student, ts: Date.now() });
+      await upsertPendingItem('addStudent', student.id, student);
       toast(`${name} saved offline — will sync later`, 'success');
     }
   } else {
-    await dbPut(STORES.pending, { type: 'addStudent', payload: student, ts: Date.now() });
+    await upsertPendingItem('addStudent', student.id, student);
     toast(`${name} saved offline ✓`, 'success');
   }
 
@@ -860,11 +858,11 @@ async function handleSaveClass() {
       await gasRequest('saveClass', cls);
       toast(editId ? 'Class updated ✓' : 'Class added ✓', 'success');
     } catch {
-      await dbPut(STORES.pending, { type: 'saveClass', payload: cls, ts: Date.now() });
+      await upsertPendingItem('saveClass', cls.id, cls);
       toast('Saved offline — will sync later', 'success');
     }
   } else {
-    await dbPut(STORES.pending, { type: 'saveClass', payload: cls, ts: Date.now() });
+    await upsertPendingItem('saveClass', cls.id, cls);
     toast('Saved offline ✓', 'success');
   }
 
@@ -884,10 +882,10 @@ async function handleDeleteClass(id) {
     try {
       await gasRequest('deleteClass', { id });
     } catch {
-      await dbPut(STORES.pending, { type: 'deleteClass', payload: { id }, ts: Date.now() });
+      await upsertPendingItem('deleteClass', id, { id });
     }
   } else {
-    await dbPut(STORES.pending, { type: 'deleteClass', payload: { id }, ts: Date.now() });
+    await upsertPendingItem('deleteClass', id, { id });
   }
 
   toast(`"${cls.name}" deleted`, 'success');
