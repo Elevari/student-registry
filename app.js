@@ -443,6 +443,16 @@ function escHtml(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+async function getClassOptions(selectedValue = '') {
+  const students = await dbGetAll(STORES.students);
+  const classes  = await dbGetAll(STORES.classes);
+  const fromStudents = students.map(s => s.program).filter(Boolean);
+  const fromClasses  = classes.map(c => c.name).filter(Boolean);
+  const all = [...new Set([...(APP.settings.classes || []), ...fromClasses, ...fromStudents])].sort();
+  return '<option value="">— select class —</option>' +
+    all.map(c => `<option value="${escHtml(c)}" ${c === selectedValue ? 'selected' : ''}>${escHtml(c)}</option>`).join('');
+}
+
 /* ─────────────────────────────────────────────────────────────
    DASHBOARD
 ───────────────────────────────────────────────────────────── */
@@ -730,6 +740,10 @@ async function showProfile(studentId) {
   document.getElementById('pedit-observations').value = getField(student, 'observations');
   document.getElementById('pedit-followup').value     = getField(student, 'followup');
 
+  // Populate program select with classes from DB
+  const programSel = document.getElementById('pedit-program');
+  if (programSel) programSel.innerHTML = await getClassOptions(getField(student, 'program'));
+
   // Attendance history
   const histEl = document.getElementById('profile-history');
   if (!sAtt.length) {
@@ -961,13 +975,8 @@ function closeAddStudentModal() {
 }
 
 async function populateProgramSuggestions() {
-  const students = await dbGetAll(STORES.students);
-  const programs = [...new Set([
-    ...(APP.settings.classes || []),
-    ...students.map(s => s.program).filter(Boolean)
-  ])];
-  const dl = document.getElementById('program-suggestions');
-  dl.innerHTML = programs.map(p => `<option value="${escHtml(p)}">`).join('');
+  const sel = document.getElementById('add-program');
+  if (sel) sel.innerHTML = await getClassOptions();
 }
 
 async function handleAddStudent() {

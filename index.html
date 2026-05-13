@@ -212,8 +212,9 @@
           </div>
           <div class="field-group" style="grid-column:1/-1">
             <label>Program / Class</label>
-            <input type="text" id="add-program" class="profile-edit-input" placeholder="e.g. Computer Science" list="program-suggestions" />
-            <datalist id="program-suggestions"></datalist>
+            <select id="add-program" class="profile-edit-input">
+              <option value="">— select class —</option>
+            </select>
           </div>
           <div class="field-group" style="grid-column:1/-1">
             <label>Workplace</label>
@@ -254,11 +255,18 @@
           </div>
           <div class="field-group">
             <label>Gender</label>
-            <input type="text" id="pedit-gender" class="profile-edit-input" placeholder="Female / Male / Other" />
+            <select id="pedit-gender" class="profile-edit-input">
+              <option value="">— select —</option>
+              <option>Female</option>
+              <option>Male</option>
+              <option>Other</option>
+            </select>
           </div>
           <div class="field-group">
             <label>Program / Class</label>
-            <input type="text" id="pedit-program" class="profile-edit-input" placeholder="Computer Science" />
+            <select id="pedit-program" class="profile-edit-input">
+              <option value="">— select class —</option>
+            </select>
           </div>
           <div class="field-group">
             <label>Phone</label>
