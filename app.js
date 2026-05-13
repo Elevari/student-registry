@@ -187,7 +187,13 @@ async function syncPendingAttendance() {
 /* Save or update a single student's attendance record for a date.
    Always upserts — never creates a duplicate for the same studentId+date. */
 async function saveOneRecord(studentId, dateStr, classId, status, note) {
-  // Find existing record for this student+date
+  // If classId is empty, fall back to the student's program field
+  if (!classId) {
+    const student = await dbGet(STORES.students, studentId);
+    if (student && student.program) classId = student.program;
+  }
+
+  // Find existing record for this student+date (match on date+studentId only — one record per student per day)
   const existing = (await dbGetAll(STORES.attendance, 'studentDate', IDBKeyRange.only([studentId, dateStr])))[0];
 
   const record = existing
