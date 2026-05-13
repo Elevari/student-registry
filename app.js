@@ -717,6 +717,7 @@ async function renderStudentList(query = '') {
     return;
   }
 
+  const allAtt = await dbGetAll(STORES.attendance);
   list.innerHTML = students.map(s => {
     const sAtt = allAtt.filter(a => a.studentId === s.id);
     const barColor = s.program ? 'var(--lime)' : 'var(--warn)';
