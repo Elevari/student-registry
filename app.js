@@ -807,8 +807,7 @@ async function exportRegisterXLSX() {
   });
 
   // Convert to CSV (Excel compatible)
-  const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('
-');
+  const csv  = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
   const bom  = '﻿'; // UTF-8 BOM so Excel opens correctly
   const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
