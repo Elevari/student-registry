@@ -600,13 +600,18 @@ async function showProfile(studentId) {
   document.getElementById('profile-total').textContent  = sAtt.length + ' sessions';
 
   // Populate editable fields
+  // Student data may have camelCase or lowercase keys depending on how it was synced
+  function getField(obj, key) {
+    if (obj[key] !== undefined) return obj[key];
+    return obj[key.toLowerCase()] || '';
+  }
   ['name','studentId','gender','phone','email','program','workplace'].forEach(f => {
     const el = document.getElementById(`pedit-${f}`);
-    if (el) el.value = student[f] || '';
+    if (el) el.value = getField(student, f);
   });
-  document.getElementById('pedit-notes').value        = student.notes        || '';
-  document.getElementById('pedit-observations').value = student.observations || '';
-  document.getElementById('pedit-followup').value     = student.followup     || '';
+  document.getElementById('pedit-notes').value        = getField(student, 'notes');
+  document.getElementById('pedit-observations').value = getField(student, 'observations');
+  document.getElementById('pedit-followup').value     = getField(student, 'followup');
 
   // Attendance history
   const histEl = document.getElementById('profile-history');
