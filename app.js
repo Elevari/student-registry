@@ -454,20 +454,6 @@ function escHtml(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-async function getActiveClassNames() {
-  const classes = await dbGetAll(STORES.classes);
-  // If no classes in DB, treat all as active
-  if (!classes.length) return null;
-  return new Set(classes.filter(c => c.active !== 'false' && c.active !== false).map(c => c.name));
-}
-
-async function isStudentActive(student) {
-  const activeNames = await getActiveClassNames();
-  if (!activeNames) return true; // no class config = all active
-  if (!student.program) return true; // no program = treat as active
-  return activeNames.has(student.program);
-}
-
 async function getClassOptions(selectedValue = '') {
   const students = await dbGetAll(STORES.students);
   const classes  = await dbGetAll(STORES.classes);
@@ -482,16 +468,11 @@ async function getClassOptions(selectedValue = '') {
    DASHBOARD
 ───────────────────────────────────────────────────────────── */
 async function refreshDashboard() {
-  const today      = formatDate();
-  const allStudents = await dbGetAll(STORES.students);
-  const activeNames = await getActiveClassNames();
-  const students    = activeNames
-    ? allStudents.filter(s => !s.program || activeNames.has(s.program))
-    : allStudents;
-  const activeIds   = new Set(students.map(s => s.id));
-  const allAtt      = await dbGetAll(STORES.attendance);
-  const todayAtt    = allAtt.filter(a => a.date === today && activeIds.has(a.studentId));
-  const pending     = await dbGetAll(STORES.pending);
+  const today    = formatDate();
+  const students = await dbGetAll(STORES.students);
+  const allAtt   = await dbGetAll(STORES.attendance);
+  const todayAtt = allAtt.filter(a => a.date === today);
+  const pending  = await dbGetAll(STORES.pending);
 
   document.getElementById('dash-total').textContent   = students.length;
   document.getElementById('dash-present').textContent = todayAtt.filter(a => a.status === 'P').length;
@@ -525,22 +506,12 @@ async function initAttendance() {
 }
 
 async function populateClassSelect() {
-  const sel        = document.getElementById('att-class');
-  const current    = sel.value;
-  const activeSet  = await getActiveClassNames();
-  const classes    = await dbGetAll(STORES.classes);
-  // Only show active classes in the dropdown
-  const activeClasses = classes
-    .filter(c => c.active !== 'false' && c.active !== false)
-    .map(c => c.name);
-  // Also include from students if no classes in DB
-  const students   = await dbGetAll(STORES.students);
-  const fromData   = [...new Set(students.map(s => s.program).filter(Boolean))];
-  const candidates = activeClasses.length ? activeClasses : fromData;
-  const all        = activeSet
-    ? [...new Set(candidates)].filter(c => activeSet.has(c))
-    : [...new Set(candidates)];
-  sel.innerHTML = '<option value="">All Active Classes</option>' + all.map(c =>
+  const sel      = document.getElementById('att-class');
+  const current  = sel.value;
+  const students = await dbGetAll(STORES.students);
+  const fromData = [...new Set(students.map(s => s.program).filter(Boolean))];
+  const all      = [...new Set([...APP.settings.classes, ...fromData])];
+  sel.innerHTML  = '<option value="">All Classes</option>' + all.map(c =>
     `<option value="${escHtml(c)}" ${c === current ? 'selected' : ''}>${escHtml(c)}</option>`
   ).join('');
 }
@@ -551,18 +522,11 @@ async function renderAttendanceList() {
   const classId = document.getElementById('att-class').value;
 
   let students = await dbGetAll(STORES.students);
-
-  // Always exclude students from inactive classes
-  const activeNamesAtt = await getActiveClassNames();
-  if (activeNamesAtt) {
-    students = students.filter(s => !s.program || activeNamesAtt.has(s.program));
-  }
-
   if (classId) students = students.filter(s => s.program === classId);
   students.sort((a,b) => a.name.localeCompare(b.name));
 
   if (!students.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No active students</div><div class="empty-sub">All students may be in inactive classes</div></div>';
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No students found</div><div class="empty-sub">Sync your roster or adjust the class filter</div></div>';
     updateAttSummary();
     return;
   }
@@ -753,22 +717,18 @@ async function renderStudentList(query = '') {
     return;
   }
 
-  const activeNamesStu = await getActiveClassNames();
   list.innerHTML = students.map(s => {
     const sAtt = allAtt.filter(a => a.studentId === s.id);
-    const isActive = !s.program || !activeNamesStu || activeNamesStu.has(s.program);
-    const barColor = !isActive ? '#38384a' : s.program ? 'var(--lime)' : 'var(--warn)';
+    const barColor = s.program ? 'var(--lime)' : 'var(--warn)';
     const abbr = s.program ? s.program.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,3) : '?';
-    const badgeClass = isActive ? 'lime-badge' : 'badge' ;
-    const badgeStyle = isActive ? '' : 'color:#5e5d75;background:rgba(94,93,117,.08);border:1px solid rgba(94,93,117,.2)';
-    return `<div class="entry-card" data-sid="${s.id}" style="${!isActive ? 'opacity:0.55' : ''}">
+    return `<div class="entry-card" data-sid="${s.id}">
       <div class="entry-bar" style="background:${barColor}"></div>
-      <div class="av" style="${!isActive ? 'color:#5e5d75' : ''}">${initials(s.name)}</div>
+      <div class="av">${initials(s.name)}</div>
       <div style="flex:1;min-width:0">
-        <div class="entry-name">${escHtml(s.name)}${!isActive ? ' <span style="font-family:var(--f-head);font-weight:700;font-size:.58rem;color:#5e5d75;text-transform:uppercase;letter-spacing:.06em">(inactive)</span>' : ''}</div>
+        <div class="entry-name">${escHtml(s.name)}</div>
         <div class="entry-sub">${escHtml(s.studentId||'')}${s.studentId && s.email ? ' · ' : ''}${escHtml(s.email||'')}</div>
       </div>
-      <span class="badge ${badgeClass}" style="${badgeStyle}">${escHtml(abbr)}</span>
+      <span class="badge lime-badge">${escHtml(abbr)}</span>
     </div>`;
   }).join('');
 }
@@ -1093,9 +1053,9 @@ async function renderClasses() {
   const classes  = await dbGetAll(STORES.classes);
 
   // Merge: classes from Classes store + programs found on students
+  // Auto-add student programs not yet in classes store (default active=true)
   const programsFromStudents = [...new Set(students.map(s => s.program).filter(Boolean))];
   const classIds = new Set(classes.map(c => c.id));
-  // Auto-add any student programs not yet in classes store
   for (const prog of programsFromStudents) {
     if (![...classIds].some(id => id === slugify(prog))) {
       const auto = { id: slugify(prog), name: prog, description: '', createdAt: new Date().toISOString() };
@@ -1121,19 +1081,14 @@ async function renderClasses() {
       return st && st.program === cls.name;
     });
     const sessions = [...new Set(clsAtt.map(a => a.date))].length;
-    const isActive = cls.active !== 'false' && cls.active !== false;
-    const barBg    = isActive ? 'var(--lime)' : '#38384a';
-    return `<div class="class-card" style="${!isActive ? 'opacity:0.6' : ''}">
-      <div class="entry-bar" style="background:${barBg}"></div>
-      <div class="class-icon">${isActive ? '🎓' : '📁'}</div>
+    return `<div class="class-card">
+      <div class="entry-bar" style="background:var(--lime)"></div>
+      <div class="class-icon">🎓</div>
       <div style="flex:1;min-width:0">
-        <div class="class-name">${escHtml(cls.name)}${!isActive ? ' <span style="font-family:var(--f-head);font-weight:700;font-size:.58rem;color:#5e5d75;text-transform:uppercase;letter-spacing:.06em">(inactive)</span>' : ''}</div>
+        <div class="class-name">${escHtml(cls.name)}</div>
         <div class="class-meta">${enrolled} student${enrolled !== 1 ? 's' : ''} · ${sessions} session${sessions !== 1 ? 's' : ''}${cls.description ? ' · ' + escHtml(cls.description) : ''}</div>
       </div>
       <div class="class-actions">
-        <button class="class-act-btn" data-toggle-class="${escHtml(cls.id)}" title="${isActive ? 'Set Inactive' : 'Set Active'}" style="${isActive ? '' : 'border-color:rgba(200,240,78,.3);color:var(--lime)'}">
-          ${isActive ? '⏸' : '▶'}
-        </button>
         <button class="class-act-btn" data-edit-class="${escHtml(cls.id)}" title="Edit">✏️</button>
         <button class="class-act-btn del" data-delete-class="${escHtml(cls.id)}" title="Delete">🗑</button>
       </div>
@@ -1175,13 +1130,7 @@ async function handleSaveClass() {
   const editId      = document.getElementById('class-edit-id').value;
 
   const id  = editId || slugify(name) + '-' + Date.now().toString(36);
-  // Preserve active status if editing, default to true for new
-  let active = 'true';
-  if (editId) {
-    const existing = await dbGet(STORES.classes, editId);
-    if (existing) active = existing.active !== undefined ? String(existing.active) : 'true';
-  }
-  const cls = { id, name, description, active, updatedAt: new Date().toISOString() };
+  const cls = { id, name, description, updatedAt: new Date().toISOString() };
   if (!editId) cls.createdAt = new Date().toISOString();
 
   await dbPut(STORES.classes, cls);
@@ -1203,29 +1152,6 @@ async function handleSaveClass() {
   closeClassModal();
   renderClasses();
   await populateClassSelect(); // refresh attendance dropdown
-}
-
-async function handleToggleClass(id) {
-  const cls = await dbGet(STORES.classes, id);
-  if (!cls) return;
-  const nowActive = cls.active !== 'false' && cls.active !== false;
-  cls.active     = nowActive ? 'false' : 'true';
-  cls.updatedAt  = new Date().toISOString();
-  await dbPut(STORES.classes, cls);
-
-  if (APP.online && APP.settings.gasUrl) {
-    try {
-      await gasRequest('saveClass', cls);
-    } catch {
-      await upsertPendingItem('saveClass', cls.id, cls);
-    }
-  } else {
-    await upsertPendingItem('saveClass', cls.id, cls);
-  }
-
-  toast(`"${cls.name}" set to ${cls.active === 'true' ? 'active' : 'inactive'}`, 'success');
-  renderClasses();
-  refreshDashboard();
 }
 
 async function handleDeleteClass(id) {
@@ -1416,10 +1342,8 @@ function bindEvents() {
     if (e.target === document.getElementById('add-class-modal')) closeClassModal();
   });
   document.getElementById('classes-list').addEventListener('click', e => {
-    const toggleBtn = e.target.closest('[data-toggle-class]');
     const editBtn   = e.target.closest('[data-edit-class]');
     const deleteBtn = e.target.closest('[data-delete-class]');
-    if (toggleBtn) handleToggleClass(toggleBtn.dataset.toggleClass);
     if (editBtn)   openAddClassModal(editBtn.dataset.editClass);
     if (deleteBtn) handleDeleteClass(deleteBtn.dataset.deleteClass);
   });
