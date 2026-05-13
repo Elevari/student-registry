@@ -540,6 +540,24 @@ select option { background: var(--bg-2); }
 .class-action-btn:hover { background: var(--bg-4); color: var(--text-0); }
 .class-action-btn.danger:hover { background: rgba(255,107,107,.2); color: var(--absent); }
 
+
+/* ── Auto-saved indicator ──────────────────────────────────── */
+.auto-saved-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--present);
+  box-shadow: 0 0 6px var(--present);
+  flex-shrink: 0;
+  animation: savedPop .2s ease, savedFade 1.8s ease 0.2s forwards;
+}
+@keyframes savedPop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+@keyframes savedFade {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* ── Note Toggle & Row ─────────────────────────────────────── */
 .note-toggle {
   width: 28px; height: 28px; border-radius: 6px;

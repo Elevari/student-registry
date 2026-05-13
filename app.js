@@ -184,45 +184,60 @@ async function syncPendingAttendance() {
 }
 
 /* records: [{ studentId, status('P'|'A'), note }] */
-async function saveAttendance(dateStr, classId, records) {
-  const payload = { date: dateStr, classId, instructor: APP.settings.instructorName, records };
+/* Save or update a single student's attendance record for a date.
+   Always upserts — never creates a duplicate for the same studentId+date. */
+async function saveOneRecord(studentId, dateStr, classId, status, note) {
+  // Find existing record for this student+date
+  const existing = (await dbGetAll(STORES.attendance, 'studentDate', IDBKeyRange.only([studentId, dateStr])))[0];
 
-  for (const rec of records) {
-    const existing = (await dbGetAll(STORES.attendance, 'studentDate', IDBKeyRange.only([rec.studentId, dateStr])))[0];
-    if (existing) {
-      existing.status  = rec.status;
-      existing.note    = rec.note || '';
-      existing.classId = classId;
-      existing._synced = false;
-      await dbPut(STORES.attendance, existing);
-    } else {
-      await dbPut(STORES.attendance, {
-        studentId: rec.studentId, date: dateStr, classId,
-        status: rec.status, note: rec.note || '', _synced: false
-      });
-    }
-  }
+  const record = existing
+    ? { ...existing, status, note: note || '', classId, _synced: false }
+    : { studentId, date: dateStr, classId, status, note: note || '', _synced: false };
+
+  await dbPut(STORES.attendance, record);
+
+  // Push to Google Sheets
+  const payload = {
+    date: dateStr, classId,
+    instructor: APP.settings.instructorName,
+    records: [{ studentId, status, note: note || '' }]
+  };
 
   if (APP.online && APP.settings.gasUrl) {
     try {
       await gasRequest('saveAttendance', payload);
-      const rows = await dbGetAll(STORES.attendance);
-      for (const row of rows) {
-        if (row.date === dateStr && records.find(r => r.studentId === row.studentId)) {
-          row._synced = true;
-          await dbPut(STORES.attendance, row);
-        }
-      }
-      toast('Attendance saved ✓', 'success');
+      // Mark synced
+      const saved = (await dbGetAll(STORES.attendance, 'studentDate', IDBKeyRange.only([studentId, dateStr])))[0];
+      if (saved) { saved._synced = true; await dbPut(STORES.attendance, saved); }
     } catch {
-      await dbPut(STORES.pending, { payload, ts: Date.now() });
-      toast('Saved offline — will sync later', 'success');
+      await queuePending(payload);
     }
   } else {
-    await dbPut(STORES.pending, { payload, ts: Date.now() });
-    toast('Saved offline — will sync when online', 'success');
+    await queuePending(payload);
   }
   refreshDashboard();
+}
+
+async function queuePending(payload) {
+  // Merge into existing pending entry for same date+class if possible
+  const allPending = await dbGetAll(STORES.pending);
+  const existing   = allPending.find(p => p.payload && p.payload.date === payload.date && p.payload.classId === payload.classId && !p.type);
+  if (existing) {
+    // Upsert the record inside the pending payload
+    const idx = existing.payload.records.findIndex(r => r.studentId === payload.records[0].studentId);
+    if (idx >= 0) existing.payload.records[idx] = payload.records[0];
+    else existing.payload.records.push(payload.records[0]);
+    await dbPut(STORES.pending, existing);
+  } else {
+    await dbPut(STORES.pending, { payload, ts: Date.now() });
+  }
+}
+
+/* Bulk save — used by "Mark All Present" then manual save button (kept for compatibility) */
+async function saveAttendance(dateStr, classId, records) {
+  for (const rec of records) {
+    await saveOneRecord(rec.studentId, dateStr, classId, rec.status, rec.note || '');
+  }
 }
 
 async function saveStudentProfile(studentId, fields) {
@@ -435,16 +450,39 @@ function updateAttSummary() {
     ${u ? `<div class="att-summary-pill" style="background:var(--bg-3);color:var(--text-2)">Unmarked <strong>${u}</strong></div>` : ''}`;
 }
 
+function showSavedIndicator(sid) {
+  const row = document.getElementById(`srow-${sid}`);
+  if (!row) return;
+  // Remove any existing indicator
+  const existing = row.querySelector('.auto-saved-dot');
+  if (existing) existing.remove();
+  const dot = document.createElement('span');
+  dot.className = 'auto-saved-dot';
+  dot.title = 'Saved';
+  row.appendChild(dot);
+  setTimeout(() => dot.remove(), 2000);
+}
+
 function handleAttPill(e) {
   const btn    = e.target.closest('.att-pill');
   const sid    = btn.dataset.sid;
   const status = btn.dataset.status;
   if (!attState[sid]) attState[sid] = { status: '', note: '' };
   attState[sid].status = status;
+
+  // Update UI immediately
   const row = document.getElementById(`srow-${sid}`);
   row.className = `student-row is-${status === 'P' ? 'present' : 'absent'}`;
   row.querySelectorAll('.att-pill').forEach(p => p.classList.toggle('active', p.dataset.status === status));
   updateAttSummary();
+
+  // Auto-save this student's record right away
+  const date    = document.getElementById('att-date').value;
+  const classId = document.getElementById('att-class').value;
+  if (date) {
+    saveOneRecord(sid, date, classId, status, attState[sid].note || '')
+      .then(() => showSavedIndicator(sid));
+  }
 }
 
 function handleNoteToggle(e) {
@@ -456,6 +494,9 @@ function handleNoteToggle(e) {
   }
 }
 
+// Debounce timers per student for note auto-save
+const NOTE_SAVE_TIMERS = {};
+
 function handleNoteInput(e) {
   const input = e.target.closest('.att-note-input');
   const sid   = input.dataset.sid;
@@ -463,9 +504,22 @@ function handleNoteInput(e) {
   attState[sid].note = input.value;
   const btn = document.querySelector(`.note-toggle[data-sid="${sid}"]`);
   if (btn) btn.classList.toggle('has-note', !!input.value);
+
+  // Auto-save note after 800ms of no typing
+  clearTimeout(NOTE_SAVE_TIMERS[sid]);
+  NOTE_SAVE_TIMERS[sid] = setTimeout(() => {
+    const date    = document.getElementById('att-date').value;
+    const classId = document.getElementById('att-class').value;
+    const status  = attState[sid] && attState[sid].status;
+    if (date && status) {
+      saveOneRecord(sid, date, classId, status, input.value)
+        .then(() => showSavedIndicator(sid));
+    }
+  }, 800);
 }
 
 async function handleSaveAttendance() {
+  // Manual save — saves all marked students at once (backup for bulk changes)
   const date    = document.getElementById('att-date').value;
   const classId = document.getElementById('att-class').value;
   if (!date) { toast('Please select a date', 'error'); return; }
@@ -473,7 +527,10 @@ async function handleSaveAttendance() {
     .filter(([, v]) => v.status)
     .map(([studentId, v]) => ({ studentId, status: v.status, note: v.note || '' }));
   if (!records.length) { toast('No attendance marked yet', 'error'); return; }
-  await saveAttendance(date, classId, records);
+  for (const rec of records) {
+    await saveOneRecord(rec.studentId, date, classId, rec.status, rec.note || '');
+  }
+  toast('All attendance saved ✓', 'success');
 }
 
 /* ─────────────────────────────────────────────────────────────
