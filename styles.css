@@ -322,6 +322,9 @@ select option { background: var(--bg-2); }
   border-color: var(--c);
   color: var(--c);
 }
+.att-pill.saved {
+  box-shadow: 0 0 0 2px var(--present);
+}
 .att-pill[data-status="P"].active { background: rgba(0,229,160,.15);   border-color: var(--present); color: var(--present); }
 .att-pill[data-status="L"].active { background: rgba(255,209,102,.15);  border-color: var(--late);    color: var(--late);    }
 .att-pill[data-status="A"].active { background: rgba(255,107,107,.15);  border-color: var(--absent);  color: var(--absent);  }

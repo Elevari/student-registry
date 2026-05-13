@@ -195,44 +195,68 @@ async function syncRoster() {
   if (!APP.online || !APP.settings.gasUrl) return;
   setSyncState('syncing', 'Syncing…');
   try {
-    // Sync students
+    // ── 1. Sync students ──────────────────────────────────
     const data = await gasRequest('getStudents');
     if (data.students && Array.isArray(data.students)) {
       await dbClear(STORES.students);
-      for (const s of data.students) await dbPut(STORES.students, normalizeStudent(s));
+      for (const s of data.students) {
+        await dbPut(STORES.students, normalizeStudent(s));
+      }
+      console.log('[Sync] Students loaded:', data.students.length);
     }
 
-    // Sync attendance records from Sheets into IndexedDB
-    try {
-      const attData = await gasRequest('getAttendance', {});
-      if (attData.records && Array.isArray(attData.records)) {
-        for (const rec of attData.records) {
-          if (!rec.date || !rec.studentid) continue;
-          const studentId = rec.studentid || rec.studentId || '';
-          const date      = rec.date;
-          // Check if already in local DB
-          const allLocal = await dbGetAll(STORES.attendance);
-          const exists   = allLocal.find(r => r.studentId === studentId && r.date === date);
-          if (!exists) {
-            await dbPut(STORES.attendance, {
-              studentId, date,
-              classId:  rec.classid  || rec.classId  || '',
-              status:   rec.status   || '',
-              note:     rec.note     || '',
-              _synced:  true
-            });
+    // ── 2. Sync attendance from Sheet → IndexedDB ─────────
+    const attData = await gasRequest('getAttendance', {});
+    if (attData.records && Array.isArray(attData.records)) {
+      // Build a set of existing local records keyed by studentId|date
+      const localAtt   = await dbGetAll(STORES.attendance);
+      const localKeys  = new Set(localAtt.map(r => r.studentId + '|' + r.date));
+
+      let pulled = 0;
+      for (const rec of attData.records) {
+        // GAS returns lowercase keys — handle both
+        const studentId = String(rec.studentid || rec.studentId || '').trim();
+        const date      = String(rec.date      || '').trim().substring(0, 10);
+        const status    = String(rec.status    || '').trim();
+
+        if (!studentId || !date || !status) continue;
+
+        const key = studentId + '|' + date;
+        if (localKeys.has(key)) {
+          // Update existing local record with sheet version
+          const existing = localAtt.find(r => r.studentId === studentId && r.date === date);
+          if (existing && !existing._localDirty) {
+            existing.status  = status;
+            existing.classId = String(rec.classid || rec.classId || '').trim();
+            existing.note    = String(rec.note    || '').trim();
+            existing._synced = true;
+            await dbPut(STORES.attendance, existing);
           }
+        } else {
+          // New record from sheet — add to local DB
+          await dbPut(STORES.attendance, {
+            studentId, date,
+            classId: String(rec.classid || rec.classId || '').trim(),
+            status,
+            note:    String(rec.note || '').trim(),
+            _synced: true
+          });
+          localKeys.add(key);
+          pulled++;
         }
       }
-    } catch (e) {
-      console.warn('Attendance sync failed:', e.message);
+      console.log('[Sync] Attendance pulled:', pulled, 'updated existing');
     }
 
     toast('Synced ✓', 'success');
     setSyncState('online', 'Online');
+    // Refresh whatever screen is open
+    if (APP.currentScreen === 'attendance') await renderAttendanceList();
+    refreshDashboard();
   } catch (err) {
+    console.error('[Sync] Failed:', err);
     setSyncState('online', 'Online');
-    toast('Roster sync failed: ' + err.message, 'error');
+    toast('Sync failed: ' + err.message, 'error');
   }
 }
 
@@ -282,8 +306,8 @@ async function saveOneRecord(studentId, dateStr, classId, status, note) {
   const existing = allRecs.find(r => r.studentId === studentId && r.date === dateStr);
 
   const record = existing
-    ? { ...existing, status, note: note || '', classId, _synced: false }
-    : { studentId, date: dateStr, classId, status, note: note || '', _synced: false };
+    ? { ...existing, status, note: note || '', classId, _synced: false, _localDirty: true }
+    : { studentId, date: dateStr, classId, status, note: note || '', _synced: false, _localDirty: true };
 
   await dbPut(STORES.attendance, record);
 
@@ -298,8 +322,9 @@ async function saveOneRecord(studentId, dateStr, classId, status, note) {
     try {
       await gasRequest('saveAttendance', payload);
       // Mark synced
-      const saved = (await dbGetAll(STORES.attendance, 'studentDate', IDBKeyRange.only([studentId, dateStr])))[0];
-      if (saved) { saved._synced = true; await dbPut(STORES.attendance, saved); }
+      const allRecs2 = await dbGetAll(STORES.attendance);
+      const saved = allRecs2.find(r => r.studentId === studentId && r.date === dateStr);
+      if (saved) { saved._synced = true; saved._localDirty = false; await dbPut(STORES.attendance, saved); }
     } catch {
       await queuePending(payload);
     }
@@ -572,7 +597,15 @@ function handleAttPill(e) {
   const classId = document.getElementById('att-class').value;
   if (date) {
     saveOneRecord(sid, date, classId, status, attState[sid].note || '')
-      .then(() => showSavedIndicator(sid));
+      .then(() => {
+        showSavedIndicator(sid);
+        // Re-highlight the active pill to confirm save
+        const row = document.getElementById(`srow-${sid}`);
+        if (row) {
+          const activePill = row.querySelector(`.att-pill[data-status="${status}"]`);
+          if (activePill) activePill.classList.add('active', 'saved');
+        }
+      });
   }
 }
 
