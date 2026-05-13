@@ -525,12 +525,22 @@ async function initAttendance() {
 }
 
 async function populateClassSelect() {
-  const sel      = document.getElementById('att-class');
-  const current  = sel.value;
-  const students = await dbGetAll(STORES.students);
-  const fromData = [...new Set(students.map(s => s.program).filter(Boolean))];
-  const all      = [...new Set([...APP.settings.classes, ...fromData])];
-  sel.innerHTML  = '<option value="">All Classes</option>' + all.map(c =>
+  const sel        = document.getElementById('att-class');
+  const current    = sel.value;
+  const activeSet  = await getActiveClassNames();
+  const classes    = await dbGetAll(STORES.classes);
+  // Only show active classes in the dropdown
+  const activeClasses = classes
+    .filter(c => c.active !== 'false' && c.active !== false)
+    .map(c => c.name);
+  // Also include from students if no classes in DB
+  const students   = await dbGetAll(STORES.students);
+  const fromData   = [...new Set(students.map(s => s.program).filter(Boolean))];
+  const candidates = activeClasses.length ? activeClasses : fromData;
+  const all        = activeSet
+    ? [...new Set(candidates)].filter(c => activeSet.has(c))
+    : [...new Set(candidates)];
+  sel.innerHTML = '<option value="">All Active Classes</option>' + all.map(c =>
     `<option value="${escHtml(c)}" ${c === current ? 'selected' : ''}>${escHtml(c)}</option>`
   ).join('');
 }
@@ -541,11 +551,18 @@ async function renderAttendanceList() {
   const classId = document.getElementById('att-class').value;
 
   let students = await dbGetAll(STORES.students);
+
+  // Always exclude students from inactive classes
+  const activeNamesAtt = await getActiveClassNames();
+  if (activeNamesAtt) {
+    students = students.filter(s => !s.program || activeNamesAtt.has(s.program));
+  }
+
   if (classId) students = students.filter(s => s.program === classId);
   students.sort((a,b) => a.name.localeCompare(b.name));
 
   if (!students.length) {
-    list.innerHTML = '<div class="empty-state"><div class="emoji">👥</div><h3>No students found</h3><p>Sync your roster or adjust the class filter</p></div>';
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No active students</div><div class="empty-sub">All students may be in inactive classes</div></div>';
     updateAttSummary();
     return;
   }
