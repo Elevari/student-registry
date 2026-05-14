@@ -540,21 +540,27 @@ async function getClassOptions(selectedValue = '') {
    DASHBOARD
 ───────────────────────────────────────────────────────────── */
 async function refreshDashboard() {
-  const today    = formatDate();
-  const students = await dbGetAll(STORES.students);
-  const allAtt   = await dbGetAll(STORES.attendance);
-  const todayAtt = allAtt.filter(a => a.date === today);
-  const pending  = await dbGetAll(STORES.pending);
+  const today = new Date();
 
-  document.getElementById('dash-total').textContent   = students.length;
-  document.getElementById('dash-present').textContent = todayAtt.filter(a => a.status === 'P').length;
-  document.getElementById('dash-absent').textContent  = todayAtt.filter(a => a.status === 'A').length;
-  document.getElementById('dash-late').textContent    = pending.length;
-  renderDashboardReminders();
-  document.getElementById('dash-date').textContent    = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  // Update date display
+  const dayEl  = document.getElementById('dash-day');
+  const dateEl = document.getElementById('dash-date');
+  if (dayEl)  dayEl.textContent  = today.toLocaleDateString('en-US', { weekday: 'long' });
+  if (dateEl) dateEl.textContent = today.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
 
+  // Update reminder badge on home tile
+  const reminders = await dbGetAll(STORES.reminders);
+  const pendingCount = reminders.filter(r => !r.done).length;
+  const badge = document.getElementById('ht-reminder-badge');
+  if (badge) {
+    badge.textContent   = pendingCount;
+    badge.style.display = pendingCount > 0 ? 'flex' : 'none';
+  }
 
-  // Recent activity section removed per user request
+  // Bind tile clicks (safe to call multiple times)
+  document.querySelectorAll('.home-tile[data-screen]').forEach(tile => {
+    tile.onclick = () => showScreen(tile.dataset.screen);
+  });
 }
 
 function goToAttDate(date) {
@@ -1423,28 +1429,8 @@ async function renderProfileReminders(studentId) {
 }
 
 async function renderDashboardReminders() {
-  const listEl    = document.getElementById('dash-reminders-list');
-  const labelEl   = document.getElementById('dash-reminders-label');
-  if (!listEl || !labelEl) return;
-
-  const reminders  = await dbGetAll(STORES.reminders);
-  const students   = await dbGetAll(STORES.students);
-  const studentMap = Object.fromEntries(students.map(s => [s.id, s.name]));
-  const today      = formatDate();
-
-  // Show overdue + due today only
-  const urgent = reminders
-    .filter(r => !r.done && r.dueDate && r.dueDate <= today)
-    .sort((a,b) => a.dueDate.localeCompare(b.dueDate));
-
-  if (!urgent.length) {
-    labelEl.style.display = 'none';
-    listEl.innerHTML = '';
-    return;
-  }
-
-  labelEl.style.display = 'block';
-  listEl.innerHTML = urgent.map(r => reminderCardHTML(r, studentMap[r.studentId] || 'Unknown', true)).join('');
+  // Dashboard no longer shows reminder list — just update the tile badge
+  await refreshDashboard();
 }
 
 function openAddReminderModal(studentId, studentName, editId = '', rescheduleId = '') {
@@ -1522,7 +1508,6 @@ async function handleSaveReminder() {
   toast(mode === 'reschedule' ? 'Rescheduled ✓' : 'Reminder saved ✓', 'success');
   closeReminderModal();
   await renderProfileReminders(reminder.studentId);
-  await renderDashboardReminders();
   if (APP.currentScreen === 'reminders') await renderRemindersScreen();
 }
 

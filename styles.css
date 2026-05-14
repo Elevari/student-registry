@@ -608,3 +608,67 @@ select.ct-input option { background: var(--card); }
   cursor: not-allowed;
   transform: none !important;
 }
+
+/* ── Home Screen Tiles ───────────────────────────────────── */
+.dash-date-block {
+  margin-bottom: 22px;
+}
+.dash-day {
+  font-family: var(--f-head); font-weight: 800;
+  font-size: 28px; letter-spacing: -.02em;
+  color: var(--t-pri); line-height: 1;
+  margin-bottom: 3px;
+}
+.dash-date {
+  font-size: 13px; color: var(--t-muted); font-weight: 300;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.home-tile {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+  animation: fadeUp .3s cubic-bezier(.22,1,.36,1) both;
+}
+.home-tile:nth-child(1){ animation-delay: 0ms; }
+.home-tile:nth-child(2){ animation-delay: 40ms; }
+.home-tile:nth-child(3){ animation-delay: 80ms; }
+.home-tile:nth-child(4){ animation-delay: 120ms; }
+.home-tile:nth-child(5){ animation-delay: 160ms; }
+.home-tile:nth-child(6){ animation-delay: 200ms; }
+
+.home-tile:hover  { background: var(--surface); border-color: var(--border-e); }
+.home-tile:active { transform: scale(.97); }
+
+.ht-label {
+  font-family: var(--f-head); font-weight: 700;
+  font-size: 11px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--t-pri);
+}
+
+.ht-badge {
+  position: absolute;
+  top: -11px; right: -11px;
+  min-width: 26px; height: 26px;
+  padding: 0 8px;
+  border-radius: 13px;
+  background: var(--danger);
+  border: 3px solid var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--f-head); font-weight: 700;
+  font-size: 11px; color: #fff;
+}
