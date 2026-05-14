@@ -557,10 +557,7 @@ async function refreshDashboard() {
     badge.style.display = pendingCount > 0 ? 'flex' : 'none';
   }
 
-  // Bind tile clicks (safe to call multiple times)
-  document.querySelectorAll('.home-tile[data-screen]').forEach(tile => {
-    tile.onclick = () => showScreen(tile.dataset.screen);
-  });
+
 }
 
 function goToAttDate(date) {
@@ -1739,6 +1736,12 @@ function bindEvents() {
   });
 
 
+
+  // Home screen tiles — use event delegation so it always works
+  document.querySelector('main').addEventListener('click', e => {
+    const tile = e.target.closest('.home-tile[data-screen]');
+    if (tile) showScreen(tile.dataset.screen);
+  });
 
   // Reminders screen
   document.getElementById('reminders-list').addEventListener('click', handleReminderListClick);
