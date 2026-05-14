@@ -1647,7 +1647,7 @@ async function loadSampleData() {
 ───────────────────────────────────────────────────────────── */
 async function handleOnline() {
   APP.online = true;
-  await updateSyncBadge();
+  setSyncState('online', 'Online');
   toast('Back online — syncing…', 'success');
   if (APP.settings.autoSync !== false && APP.settings.gasUrl) {
     try {
@@ -1666,12 +1666,31 @@ async function handleOnline() {
 }
 function handleOffline() {
   APP.online = false;
-  // Update badge immediately — don't wait for async
   setSyncState('offline', 'Offline');
   toast('You are offline — changes saved locally', '');
-  // Then update with unsynced count
   updateSyncBadge();
 }
+
+// Poll every 10s to detect connectivity changes Chrome doesn't always fire events for
+let _lastOnlineState = navigator.onLine;
+setInterval(async () => {
+  let isOnline = navigator.onLine;
+  // Double-check with a real network request if navigator says online
+  if (isOnline && APP.settings.gasUrl) {
+    try {
+      const r = await fetch(APP.settings.gasUrl + '?action=ping', { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(3000) });
+      isOnline = r.ok || r.status > 0; // any response = online
+    } catch {
+      isOnline = false;
+    }
+  }
+  if (isOnline !== _lastOnlineState) {
+    _lastOnlineState = isOnline;
+    APP.online = isOnline;
+    if (isOnline) handleOnline();
+    else handleOffline();
+  }
+}, 10000);
 
 /* ─────────────────────────────────────────────────────────────
    PWA / SW
