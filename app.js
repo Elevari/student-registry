@@ -476,6 +476,11 @@ function showScreen(name) {
   const tab = document.querySelector('.tab[data-screen="' + name + '"]');
   if (tab) tab.classList.add('active');
   APP.currentScreen = name;
+
+  // Hide tab bar on home, show on all other screens
+  const tabBar = document.getElementById('tab-bar');
+  if (tabBar) tabBar.style.display = name === 'dashboard' ? 'none' : 'grid';
+
   if (name === 'dashboard')  refreshDashboard();
   if (name === 'attendance') initAttendance();
   if (name === 'students')   renderStudentList();
