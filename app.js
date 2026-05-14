@@ -449,6 +449,13 @@ function setSyncState(state, label) {
   const dot  = badge.querySelector('.dot');
   const span = badge.querySelector('span');
   if (span) span.textContent = label;
+
+  // Direct style fallback in case CSS class isn't applying
+  const colors = { online: '#c8f04e', syncing: '#f0964e', offline: '#f04e6a' };
+  const color  = colors[state] || '#9998b0';
+  if (dot)  dot.style.background  = color;
+  if (span) span.style.color      = color;
+  badge.style.color = color;
 }
 
 async function updateSyncBadge() {
@@ -1659,8 +1666,11 @@ async function handleOnline() {
 }
 function handleOffline() {
   APP.online = false;
-  updateSyncBadge();
+  // Update badge immediately — don't wait for async
+  setSyncState('offline', 'Offline');
   toast('You are offline — changes saved locally', '');
+  // Then update with unsynced count
+  updateSyncBadge();
 }
 
 /* ─────────────────────────────────────────────────────────────
