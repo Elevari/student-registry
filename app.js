@@ -1663,13 +1663,37 @@ window.addEventListener('appinstalled', () => {
 });
 
 async function registerSW() {
-  if ('serviceWorker' in navigator) {
-    try {
-      await navigator.serviceWorker.register('./service-worker.js');
-      navigator.serviceWorker.addEventListener('message', e => {
-        if (e.data && e.data.type === 'TRIGGER_SYNC') syncPendingAttendance();
-      });
-    } catch {}
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' });
+
+    // Force update check on every load
+    reg.update();
+
+    // When a new SW is waiting, activate it immediately
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      if (newWorker) {
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      }
+    });
+
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data && e.data.type === 'TRIGGER_SYNC') syncPendingAttendance();
+    });
+
+    // Reload when new SW takes control
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) { refreshing = true; window.location.reload(); }
+    });
+
+  } catch (err) {
+    console.warn('SW registration failed:', err);
   }
 }
 
