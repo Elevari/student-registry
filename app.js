@@ -532,11 +532,8 @@ function escHtml(str) {
 }
 
 async function getClassOptions(selectedValue = '') {
-  const students = await dbGetAll(STORES.students);
-  const classes  = await dbGetAll(STORES.classes);
-  const fromStudents = students.map(s => s.program).filter(Boolean);
-  const fromClasses  = classes.map(c => c.name).filter(Boolean);
-  const all = [...new Set([...(APP.settings.classes || []), ...fromClasses, ...fromStudents])].sort();
+  const classes = await dbGetAll(STORES.classes);
+  const all = [...new Set(classes.map(c => c.name).filter(Boolean))].sort();
   return '<option value="">— select class —</option>' +
     all.map(c => `<option value="${escHtml(c)}" ${c === selectedValue ? 'selected' : ''}>${escHtml(c)}</option>`).join('');
 }
@@ -588,12 +585,11 @@ async function initAttendance() {
 }
 
 async function populateClassSelect() {
-  const sel      = document.getElementById('att-class');
-  const current  = sel.value;
-  const students = await dbGetAll(STORES.students);
-  const fromData = [...new Set(students.map(s => s.program).filter(Boolean))];
-  const all      = [...new Set([...APP.settings.classes, ...fromData])];
-  sel.innerHTML  = '<option value="">All Classes</option>' + all.map(c =>
+  const sel     = document.getElementById('att-class');
+  const current = sel.value;
+  const classes = await dbGetAll(STORES.classes);
+  const all     = [...new Set(classes.map(c => c.name).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All Classes</option>' + all.map(c =>
     `<option value="${escHtml(c)}" ${c === current ? 'selected' : ''}>${escHtml(c)}</option>`
   ).join('');
 }
@@ -907,13 +903,11 @@ async function renderReports() {
 }
 
 async function populateReportClassFilter() {
-  const sel      = document.getElementById('report-class-filter');
-  const current  = sel.value;
-  const students = await dbGetAll(STORES.students);
-  const classes  = [...new Set(students.map(s => s.program).filter(Boolean))].sort();
-  const settings = APP.settings.classes || [];
-  const all      = [...new Set([...settings, ...classes])];
-  sel.innerHTML  = '<option value="">All Classes</option>' +
+  const sel     = document.getElementById('report-class-filter');
+  const current = sel.value;
+  const classes = await dbGetAll(STORES.classes);
+  const all     = [...new Set(classes.map(c => c.name).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All Classes</option>' +
     all.map(c => `<option value="${escHtml(c)}" ${c === current ? 'selected' : ''}>${escHtml(c)}</option>`).join('');
 }
 
@@ -1147,19 +1141,24 @@ async function renderClasses() {
   const classes  = await dbGetAll(STORES.classes);
 
   // Merge: classes from Classes store + programs found on students
-  // Auto-add student programs not yet in classes store (default active=true)
-  const programsFromStudents = [...new Set(students.map(s => s.program).filter(Boolean))];
-  const classIds = new Set(classes.map(c => c.id));
-  for (const prog of programsFromStudents) {
-    if (![...classIds].some(id => id === slugify(prog))) {
-      const auto = { id: slugify(prog), name: prog, description: '', createdAt: new Date().toISOString() };
-      await dbPut(STORES.classes, auto);
-      classes.push(auto);
-      classIds.add(auto.id);
+  const allClassesRaw = await dbGetAll(STORES.classes);
+  const nameMap = {};
+  for (const c of allClassesRaw) {
+    const key = (c.name || '').toLowerCase().trim();
+    if (!nameMap[key]) {
+      nameMap[key] = c;
+    } else {
+      // Keep the one synced from Sheets (longer id or has description)
+      const existing = nameMap[key];
+      if (c.description || c.id.length > existing.id.length) {
+        await dbDelete(STORES.classes, existing.id);
+        nameMap[key] = c;
+      } else {
+        await dbDelete(STORES.classes, c.id);
+      }
     }
   }
-
-  const allClasses = await dbGetAll(STORES.classes);
+  const allClasses = Object.values(nameMap);
   allClasses.sort((a,b) => a.name.localeCompare(b.name));
   document.getElementById('classes-count').textContent = allClasses.length;
 
