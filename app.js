@@ -1287,6 +1287,16 @@ async function syncRemindersFromSheet() {
     if (data.reminders && Array.isArray(data.reminders)) {
       for (const r of data.reminders) {
         r.done = r.done === 'true' || r.done === true;
+        // Normalize dueDate — may come back as a Date object or full timestamp string
+        if (r.duedate !== undefined && r.dueDate === undefined) r.dueDate = r.duedate;
+        if (r.dueDate) {
+          const d = new Date(r.dueDate);
+          if (!isNaN(d.getTime())) {
+            r.dueDate = d.getFullYear() + '-' +
+              String(d.getMonth() + 1).padStart(2, '0') + '-' +
+              String(d.getDate()).padStart(2, '0');
+          }
+        }
         await dbPut(STORES.reminders, r);
       }
     }
@@ -1328,7 +1338,9 @@ let currentReminderFilter = 'pending';
 
 function reminderStatus(r) {
   if (r.done) return 'done';
-  if (!r.dueDate) return 'upcoming';
+  if (!r.dueDate || r.dueDate.trim() === '') return 'upcoming';
+  const d = new Date(r.dueDate + 'T00:00:00');
+  if (isNaN(d.getTime())) return 'upcoming';
   const today = formatDate();
   if (r.dueDate < today) return 'overdue';
   if (r.dueDate === today) return 'due-today';
@@ -1336,7 +1348,10 @@ function reminderStatus(r) {
 }
 
 function niceReminderDate(dateStr) {
-  if (!dateStr) return 'No due date';
+  if (!dateStr || dateStr.trim() === '') return 'No due date';
+  // Validate it's a real date
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return 'No due date';
   const today    = formatDate();
   const tomorrow = formatDate(new Date(Date.now() + 86400000));
   if (dateStr === today)    return 'Due today';
