@@ -15,6 +15,30 @@ const STORES     = { students: 'students', attendance: 'attendance', pending: 'p
 
 
 /* ── DEBUG: call window.debugAttState() in browser console ── */
+window.debugReminder = async function() {
+  const reminders = await dbGetAll(STORES.reminders);
+  console.group('=== Reminders in IndexedDB ===');
+  console.log('Total:', reminders.length);
+  reminders.forEach(r => console.log(JSON.stringify(r)));
+  console.groupEnd();
+
+  if (!APP.settings.gasUrl) { console.log('No GAS URL set'); return; }
+  console.log('GAS URL:', APP.settings.gasUrl);
+  console.log('Online:', APP.online);
+
+  if (reminders.length) {
+    const r = reminders[0];
+    const payload = { ...r, done: String(r.done || false), completedAt: r.completedAt || '' };
+    console.log('Testing saveReminder with:', JSON.stringify(payload));
+    try {
+      const result = await gasRequest('saveReminder', payload);
+      console.log('GAS response:', JSON.stringify(result));
+    } catch(e) {
+      console.error('GAS error:', e.message);
+    }
+  }
+};
+
 window.debugAttState = async function() {
   const date     = document.getElementById('att-date').value;
   const students = await dbGetAll(STORES.students);
