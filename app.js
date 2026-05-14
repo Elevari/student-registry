@@ -1671,15 +1671,18 @@ function handleOffline() {
   updateSyncBadge();
 }
 
-// Poll every 10s to detect connectivity changes Chrome doesn't always fire events for
+// Poll every 8s to detect connectivity changes Chrome doesn't always fire events for
 let _lastOnlineState = navigator.onLine;
 setInterval(async () => {
   let isOnline = navigator.onLine;
-  // Double-check with a real network request if navigator says online
-  if (isOnline && APP.settings.gasUrl) {
+  // Verify with a real network request using a reliable public resource
+  if (isOnline) {
     try {
-      const r = await fetch(APP.settings.gasUrl + '?action=ping', { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(3000) });
-      isOnline = r.ok || r.status > 0; // any response = online
+      await fetch('https://www.google.com/generate_204', {
+        method: 'HEAD', cache: 'no-store', mode: 'no-cors',
+        signal: AbortSignal.timeout(3000)
+      });
+      isOnline = true;
     } catch {
       isOnline = false;
     }
@@ -1690,7 +1693,7 @@ setInterval(async () => {
     if (isOnline) handleOnline();
     else handleOffline();
   }
-}, 10000);
+}, 8000);
 
 /* ─────────────────────────────────────────────────────────────
    PWA / SW
