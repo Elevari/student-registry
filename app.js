@@ -1298,7 +1298,8 @@ async function syncRemindersFromSheet() {
         // Normalize dueDate — may come back as a Date object or full timestamp string
         if (r.duedate !== undefined && r.dueDate === undefined) r.dueDate = r.duedate;
         if (r.dueDate) {
-          const d = new Date(r.dueDate);
+          // Use T00:00:00 to force local timezone and prevent off-by-one-day shifts
+          const d = new Date(String(r.dueDate).substring(0, 10) + 'T00:00:00');
           if (!isNaN(d.getTime())) {
             r.dueDate = d.getFullYear() + '-' +
               String(d.getMonth() + 1).padStart(2, '0') + '-' +
