@@ -304,12 +304,12 @@ async function syncRoster() {
 async function syncPendingAttendance() {
   if (!APP.online || !APP.settings.gasUrl) return;
   const pending = await dbGetAll(STORES.pending);
-  if (!pending.length) return;
+  if (!pending.length) { await updateSyncBadge(); return; }
   setSyncState('syncing', 'Syncing…');
   let synced = 0;
   for (const item of pending) {
     try {
-      if (item.type === 'studentUpdate') {
+      if (item.type === 'studentUpdate' || item.type === 'updateStudent') {
         await gasRequest('updateStudent', item.payload);
       } else if (item.type === 'addStudent') {
         await gasRequest('addStudent', item.payload);
@@ -328,11 +328,10 @@ async function syncPendingAttendance() {
       synced++;
     } catch (err) {
       console.warn('Sync failed for item', item._pendingId, err.message);
-      // Leave in pending queue — will retry on next sync
     }
   }
-  if (synced) toast(`Synced ${synced} records ✓`, 'success');
-  setSyncState('online', 'Online');
+  if (synced) toast(`Synced ${synced} record${synced > 1 ? 's' : ''} ✓`, 'success');
+  await updateSyncBadge(); // reflects true pending count after sync
   refreshDashboard();
 }
 
