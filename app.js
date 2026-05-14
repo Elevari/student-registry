@@ -1437,35 +1437,46 @@ function closeReminderModal() {
 }
 
 async function handleSaveReminder() {
-  const text      = document.getElementById('reminder-text-input').value.trim();
   const dueDate   = document.getElementById('reminder-date-input').value;
   const studentId = document.getElementById('reminder-student-id').value;
   const editId    = document.getElementById('reminder-edit-id').value;
-  if (!text) { toast('Please enter a reminder', 'error'); return; }
+  const modeEl    = document.getElementById('reminder-modal-mode');
+  const mode      = modeEl ? modeEl.value : 'add';
 
-  const id       = editId || 'rem-' + Date.now().toString(36);
-  const reminder = { id, studentId, text, dueDate, done: false, createdAt: new Date().toISOString() };
+  if (!dueDate) { toast('Please select a due date', 'error'); return; }
 
-  if (editId) {
-    const existing = await dbGet(STORES.reminders, editId);
-    if (existing) reminder.done = existing.done;
+  let reminder;
+
+  if (mode === 'reschedule') {
+    reminder = await dbGet(STORES.reminders, editId);
+    if (!reminder) { toast('Reminder not found', 'error'); return; }
+    reminder.dueDate     = dueDate;
+    reminder.done        = false;
+    reminder.completedAt = '';
+  } else {
+    const text = document.getElementById('reminder-text-input').value.trim();
+    if (!text) { toast('Please enter a reminder', 'error'); return; }
+    const id = editId || 'rem-' + Date.now().toString(36);
+    reminder = { id, studentId, text, dueDate, done: false, createdAt: new Date().toISOString(), completedAt: '' };
+    if (editId) {
+      const existing = await dbGet(STORES.reminders, editId);
+      if (existing) { reminder.done = existing.done; reminder.completedAt = existing.completedAt || ''; reminder.createdAt = existing.createdAt; }
+    }
   }
 
   await dbPut(STORES.reminders, reminder);
+  const payload = { ...reminder, done: String(reminder.done), completedAt: reminder.completedAt || '' };
 
   if (APP.online && APP.settings.gasUrl) {
-    try {
-      await gasRequest('saveReminder', { ...reminder, done: String(reminder.done) });
-    } catch {
-      await upsertPendingItem('saveReminder', reminder.id, { ...reminder, done: String(reminder.done) });
-    }
+    try { await gasRequest('saveReminder', payload); }
+    catch { await upsertPendingItem('saveReminder', reminder.id, payload); }
   } else {
-    await upsertPendingItem('saveReminder', reminder.id, { ...reminder, done: String(reminder.done) });
+    await upsertPendingItem('saveReminder', reminder.id, payload);
   }
 
-  toast('Reminder saved ✓', 'success');
+  toast(mode === 'reschedule' ? 'Rescheduled ✓' : 'Reminder saved ✓', 'success');
   closeReminderModal();
-  await renderProfileReminders(studentId);
+  await renderProfileReminders(reminder.studentId);
   await renderDashboardReminders();
   if (APP.currentScreen === 'reminders') await renderRemindersScreen();
 }

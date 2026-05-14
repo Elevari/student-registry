@@ -2,7 +2,7 @@
    ClassTrack Service Worker  v1.0
    ============================================================ */
 
-const CACHE_NAME      = 'classtrack-v5';
+const CACHE_NAME      = 'classtrack-v6';
 const DATA_CACHE_NAME = 'classtrack-data-v3';
 
 const STATIC_ASSETS = [
