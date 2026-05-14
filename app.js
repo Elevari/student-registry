@@ -1235,9 +1235,35 @@ async function handleSaveClass() {
   const cls = { id, name, description, updatedAt: new Date().toISOString() };
   if (!editId) cls.createdAt = new Date().toISOString();
 
+  // If editing, check if name changed — update all students with old name
+  if (editId) {
+    const oldCls = await dbGet(STORES.classes, editId);
+    if (oldCls && oldCls.name !== name) {
+      const oldName  = oldCls.name;
+      const students = await dbGetAll(STORES.students);
+      const affected = students.filter(s => s.program === oldName);
+
+      for (const s of affected) {
+        s.program = name;
+        await dbPut(STORES.students, s);
+        // Sync student update to Sheets
+        if (APP.online && APP.settings.gasUrl) {
+          try { await gasRequest('updateStudent', s); }
+          catch { await upsertPendingItem('updateStudent', s.id, s); }
+        } else {
+          await upsertPendingItem('updateStudent', s.id, s);
+        }
+      }
+
+      if (affected.length > 0) {
+        toast(`Updated ${affected.length} student${affected.length > 1 ? 's' : ''} to "${name}"`, 'success');
+      }
+    }
+  }
+
   await dbPut(STORES.classes, cls);
 
-  // Sync to Google Sheets
+  // Sync class to Google Sheets
   if (APP.online && APP.settings.gasUrl) {
     try {
       await gasRequest('saveClass', cls);
@@ -1253,7 +1279,7 @@ async function handleSaveClass() {
 
   closeClassModal();
   renderClasses();
-  await populateClassSelect(); // refresh attendance dropdown
+  await populateClassSelect();
 }
 
 async function handleDeleteClass(id) {
