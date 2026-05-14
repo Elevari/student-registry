@@ -757,7 +757,7 @@ async function showProfile(studentId) {
     if (obj[key] !== undefined) return obj[key];
     return obj[key.toLowerCase()] || '';
   }
-  ['name','studentId','gender','phone','email','program','workplace'].forEach(f => {
+  ['name','gender','phone','email','program','workplace'].forEach(f => {
     const el = document.getElementById(`pedit-${f}`);
     if (el) el.value = getField(student, f);
   });
@@ -791,7 +791,7 @@ async function handleSaveProfile() {
   const sid = APP.profileStudentId;
   if (!sid) return;
   const fields = {};
-  ['name','studentId','gender','phone','email','program','workplace','notes','observations','followup'].forEach(f => {
+  ['name','gender','phone','email','program','workplace','notes','observations','followup'].forEach(f => {
     const el = document.getElementById(`pedit-${f}`);
     if (el) fields[f] = el.value;
   });
@@ -985,7 +985,7 @@ async function exportRegisterXLSX() {
 ───────────────────────────────────────────────────────────── */
 function openAddStudentModal() {
   // Clear fields
-  ['name','studentId','gender','phone','email','program','workplace'].forEach(f => {
+  ['name','gender','phone','email','program','workplace'].forEach(f => {
     const el = document.getElementById(`add-${f}`);
     if (el) el.value = '';
   });
@@ -1011,9 +1011,17 @@ async function handleAddStudent() {
   // Generate a unique id
   const id = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 
+  // Auto-generate studentId from existing students
+  const allStudentsForId = await dbGetAll(STORES.students);
+  const maxNum = allStudentsForId.reduce((max, s) => {
+    const match = String(s.studentId || '').match(/\d+/);
+    return match ? Math.max(max, parseInt(match[0])) : max;
+  }, 0);
+  const autoStudentId = 'STU' + String(maxNum + 1).padStart(3, '0');
+
   const student = {
     id,
-    studentId:   document.getElementById('add-studentId').value.trim(),
+    studentId: autoStudentId,
     name,
     gender:      document.getElementById('add-gender').value,
     phone:       document.getElementById('add-phone').value.trim(),
