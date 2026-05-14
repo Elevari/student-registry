@@ -66,6 +66,7 @@ const APP = {
   db: null,
   online: navigator.onLine,
   syncing: false,
+  saving: false,
   currentScreen: 'dashboard',
   profileStudentId: null,
   installPrompt: null,
@@ -492,6 +493,35 @@ function niceDate(str) {
   if (!str) return '';
   return new Date(str + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
+/* ── Save guard ──────────────────────────────────────────
+   Wraps any async save function:
+   - Sets APP.saving = true
+   - Disables the button, shows "Saving…"
+   - Re-enables when done
+   ────────────────────────────────────────────────────── */
+async function withSaving(btnId, fn) {
+  if (APP.saving) return;
+  APP.saving = true;
+  const btn = document.getElementById(btnId);
+  let origText = '';
+  if (btn) {
+    origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    btn.style.opacity = '0.7';
+  }
+  try {
+    await fn();
+  } finally {
+    APP.saving = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = origText;
+      btn.style.opacity = '';
+    }
+  }
+}
+
 function escHtml(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -1658,7 +1688,7 @@ function bindEvents() {
   });
   document.getElementById('att-date').addEventListener('change', () => { attState = {}; renderAttendanceList(); });
   document.getElementById('att-class').addEventListener('change', () => { attState = {}; renderAttendanceList(); });
-  document.getElementById('btn-mark-all-present').addEventListener('click', async () => {
+  document.getElementById('btn-mark-all-present').addEventListener('click', () => withSaving('btn-mark-all-present', async () => {
     let students = await dbGetAll(STORES.students);
     const classId = document.getElementById('att-class').value;
     if (classId) students = students.filter(s => s.program === classId);
@@ -1667,8 +1697,8 @@ function bindEvents() {
       else attState[s.id].status = 'P';
     });
     renderAttendanceList();
-  });
-  document.getElementById('btn-save-att').addEventListener('click', handleSaveAttendance);
+  }));
+  document.getElementById('btn-save-att').addEventListener('click', () => withSaving('btn-save-att', handleSaveAttendance));
 
   // Students
   document.getElementById('student-search').addEventListener('input', e => renderStudentList(e.target.value));
@@ -1678,26 +1708,26 @@ function bindEvents() {
   });
   document.getElementById('btn-add-student').addEventListener('click', openAddStudentModal);
   document.getElementById('btn-close-add-modal').addEventListener('click', closeAddStudentModal);
-  document.getElementById('btn-confirm-add-student').addEventListener('click', handleAddStudent);
+  document.getElementById('btn-confirm-add-student').addEventListener('click', () => withSaving('btn-confirm-add-student', handleAddStudent));
   document.getElementById('add-student-modal').addEventListener('click', e => {
     if (e.target === document.getElementById('add-student-modal')) closeAddStudentModal();
   });
 
   // Profile
   document.getElementById('profile-back').addEventListener('click', () => showScreen('students'));
-  document.getElementById('btn-save-profile').addEventListener('click', handleSaveProfile);
+  document.getElementById('btn-save-profile').addEventListener('click', () => withSaving('btn-save-profile', handleSaveProfile));
 
   // Reports
   document.getElementById('btn-generate-report').addEventListener('click', generateRegister);
   document.getElementById('btn-export-xlsx').addEventListener('click', exportRegisterXLSX);
 
   // Settings
-  document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
+  document.getElementById('btn-save-settings').addEventListener('click', () => withSaving('btn-save-settings', saveSettings));
 
   // Classes
   document.getElementById('btn-add-class').addEventListener('click', () => openAddClassModal());
   document.getElementById('btn-close-class-modal').addEventListener('click', closeClassModal);
-  document.getElementById('btn-confirm-class').addEventListener('click', handleSaveClass);
+  document.getElementById('btn-confirm-class').addEventListener('click', () => withSaving('btn-confirm-class', handleSaveClass));
   document.getElementById('add-class-modal').addEventListener('click', e => {
     if (e.target === document.getElementById('add-class-modal')) closeClassModal();
   });
@@ -1728,7 +1758,7 @@ function bindEvents() {
     openAddReminderModal(sid, s ? s.name : 'Student');
   });
   document.getElementById('btn-close-reminder-modal').addEventListener('click', closeReminderModal);
-  document.getElementById('btn-confirm-reminder').addEventListener('click', handleSaveReminder);
+  document.getElementById('btn-confirm-reminder').addEventListener('click', () => withSaving('btn-confirm-reminder', handleSaveReminder));
   document.getElementById('add-reminder-modal').addEventListener('click', e => {
     if (e.target === document.getElementById('add-reminder-modal')) closeReminderModal();
   });
