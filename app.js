@@ -1327,7 +1327,7 @@ function reminderCardHTML(r, studentName, showStudent = true) {
       </div>
       <div class="reminder-actions">
         ${!r.done ? `<button class="rem-btn done-btn" data-done="${r.id}" title="Mark done">✓</button>` : `<button class="rem-btn done-btn" data-undone="${r.id}" title="Reopen">↩</button>`}
-        <button class="rem-btn del-btn" data-del-reminder="${r.id}" title="Delete">✕</button>
+        ${!r.done ? `<button class="rem-btn" data-reschedule="${r.id}" title="Reschedule">📅</button>` : ''}
       </div>
     </div>
   </div>`;
@@ -1402,23 +1402,34 @@ async function renderDashboardReminders() {
   listEl.innerHTML = urgent.map(r => reminderCardHTML(r, studentMap[r.studentId] || 'Unknown', true)).join('');
 }
 
-function openAddReminderModal(studentId, studentName, editId = '') {
-  document.getElementById('reminder-student-id').value   = studentId;
-  document.getElementById('reminder-student-name').textContent = studentName;
-  document.getElementById('reminder-edit-id').value      = editId;
-  document.getElementById('reminder-text-input').value   = '';
-  document.getElementById('reminder-date-input').value   = '';
+function openAddReminderModal(studentId, studentName, editId = '', rescheduleId = '') {
+  const isReschedule = !!rescheduleId;
+  const activeId     = editId || rescheduleId;
 
-  if (editId) {
-    dbGet(STORES.reminders, editId).then(r => {
+  document.getElementById('reminder-student-id').value        = studentId;
+  document.getElementById('reminder-student-name').textContent = studentName;
+  document.getElementById('reminder-edit-id').value           = activeId;
+  document.getElementById('reminder-modal-mode').value        = isReschedule ? 'reschedule' : 'add';
+  document.getElementById('reminder-text-input').value        = '';
+  document.getElementById('reminder-date-input').value        = formatDate(); // default to today
+  document.getElementById('reminder-modal-title').childNodes[0].textContent = isReschedule ? 'Reschedule — ' : 'Add Follow-up — ';
+
+  // Hide text field when rescheduling (only change the date)
+  const textGroup = document.getElementById('reminder-text-group');
+  textGroup.style.display = isReschedule ? 'none' : 'block';
+
+  if (activeId) {
+    dbGet(STORES.reminders, activeId).then(r => {
       if (r) {
-        document.getElementById('reminder-text-input').value = r.text    || '';
-        document.getElementById('reminder-date-input').value = r.dueDate || '';
+        if (!isReschedule) document.getElementById('reminder-text-input').value = r.text || '';
+        document.getElementById('reminder-date-input').value = r.dueDate || formatDate();
+        document.getElementById('reminder-student-name').textContent = document.getElementById('reminder-student-name').textContent || '';
       }
     });
   }
+
   document.getElementById('add-reminder-modal').classList.add('open');
-  setTimeout(() => document.getElementById('reminder-text-input').focus(), 300);
+  setTimeout(() => document.getElementById('reminder-date-input').focus(), 300);
 }
 
 function closeReminderModal() {
@@ -1504,14 +1515,21 @@ async function handleDeleteReminder(id) {
   await renderDashboardReminders();
 }
 
-function handleReminderListClick(e) {
-  const doneBtn    = e.target.closest('[data-done]');
-  const undoneBtn  = e.target.closest('[data-undone]');
-  const delBtn     = e.target.closest('[data-del-reminder]');
-  const studentLnk = e.target.closest('[data-sid]');
-  if (doneBtn)    { handleReminderDone(doneBtn.dataset.done, true);   return; }
-  if (undoneBtn)  { handleReminderDone(undoneBtn.dataset.undone, false); return; }
-  if (delBtn)     { handleDeleteReminder(delBtn.dataset.delReminder); return; }
+async function handleReminderListClick(e) {
+  const doneBtn       = e.target.closest('[data-done]');
+  const undoneBtn     = e.target.closest('[data-undone]');
+  const rescheduleBtn = e.target.closest('[data-reschedule]');
+  const studentLnk    = e.target.closest('[data-sid]');
+  if (doneBtn) { handleReminderDone(doneBtn.dataset.done, true); return; }
+  if (undoneBtn) { handleReminderDone(undoneBtn.dataset.undone, false); return; }
+  if (rescheduleBtn) {
+    const rid = rescheduleBtn.dataset.reschedule;
+    const r   = await dbGet(STORES.reminders, rid);
+    if (!r) return;
+    const student = await dbGet(STORES.students, r.studentId);
+    openAddReminderModal(r.studentId, student ? student.name : '', '', rid);
+    return;
+  }
   if (studentLnk && studentLnk.classList.contains('reminder-student')) {
     showProfile(studentLnk.dataset.sid);
   }

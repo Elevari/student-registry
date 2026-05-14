@@ -296,15 +296,15 @@
     </div>
   </div>
 
-  <!-- ADD REMINDER SHEET -->
+  <!-- ADD / RESCHEDULE REMINDER SHEET -->
   <div class="sheet-overlay" id="add-reminder-modal">
     <div class="bottom-sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title">Add Follow-up — <span id="reminder-student-name"></span></div>
+        <div class="sheet-title" id="reminder-modal-title">Add Follow-up — <span id="reminder-student-name"></span></div>
         <button class="sheet-close" id="btn-close-reminder-modal">✕</button>
       </div>
-      <div class="field-group" style="margin-bottom:10px">
+      <div class="field-group" style="margin-bottom:10px" id="reminder-text-group">
         <div class="field-lbl">Reminder</div>
         <textarea id="reminder-text-input" class="ct-input ct-textarea" placeholder="e.g. Follow up on attendance, call parent, check assignment…" style="min-height:80px"></textarea>
       </div>
@@ -314,6 +314,7 @@
       </div>
       <input type="hidden" id="reminder-student-id" value="" />
       <input type="hidden" id="reminder-edit-id" value="" />
+      <input type="hidden" id="reminder-modal-mode" value="add" />
       <button class="btn-primary" id="btn-confirm-reminder">Save Reminder</button>
     </div>
   </div>
