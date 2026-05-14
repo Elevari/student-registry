@@ -253,13 +253,20 @@ async function syncRoster() {
       console.log('[Sync] Attendance pulled:', pulled, 'updated existing');
     }
 
+    // Also pull reminders from sheet
+    await syncReminders();
+
     toast('Synced ✓', 'success');
     setSyncState('online', 'Online');
+    // Sync reminders from sheet
+    await syncRemindersFromSheet();
+
     // Always re-render attendance screen after sync so P/A reflects sheet data
     if (APP.currentScreen === 'attendance') {
       attState = {}; // clear so synced records seed fresh
       await renderAttendanceList();
     }
+    if (APP.currentScreen === 'reminders') await renderRemindersScreen();
     refreshDashboard();
   renderDashboardReminders();
   } catch (err) {
@@ -285,6 +292,10 @@ async function syncPendingAttendance() {
         await gasRequest('saveClass', item.payload);
       } else if (item.type === 'deleteClass') {
         await gasRequest('deleteClass', item.payload);
+      } else if (item.type === 'saveReminder') {
+        await gasRequest('saveReminder', item.payload);
+      } else if (item.type === 'deleteReminder') {
+        await gasRequest('deleteReminder', item.payload);
       } else if (item.payload) {
         await gasRequest('saveAttendance', item.payload);
       }
@@ -1196,6 +1207,40 @@ async function handleDeleteClass(id) {
   await populateClassSelect();
 }
 
+
+/* Sync a single reminder to Google Sheets */
+async function syncReminderToSheet(reminder) {
+  // Ensure done is always a string for Sheets
+  const payload = { ...reminder, done: String(reminder.done || false), completedAt: reminder.completedAt || '' };
+
+  if (APP.online && APP.settings.gasUrl) {
+    try {
+      await gasRequest('saveReminder', payload);
+    } catch (err) {
+      console.warn('Reminder sync failed, queuing:', err.message);
+      await upsertPendingItem('saveReminder', reminder.id, payload);
+    }
+  } else {
+    await upsertPendingItem('saveReminder', reminder.id, payload);
+  }
+}
+
+/* Pull all reminders from Sheets into IndexedDB on sync */
+async function syncRemindersFromSheet() {
+  if (!APP.online || !APP.settings.gasUrl) return;
+  try {
+    const data = await gasRequest('getReminders');
+    if (data.reminders && Array.isArray(data.reminders)) {
+      for (const r of data.reminders) {
+        r.done = r.done === 'true' || r.done === true;
+        await dbPut(STORES.reminders, r);
+      }
+    }
+  } catch (err) {
+    console.warn('Reminders pull failed:', err.message);
+  }
+}
+
 async function syncClasses() {
   if (!APP.online || !APP.settings.gasUrl) return;
   try {
@@ -1204,6 +1249,22 @@ async function syncClasses() {
       for (const cls of data.classes) await dbPut(STORES.classes, cls);
     }
   } catch {}
+}
+
+async function syncReminders() {
+  if (!APP.online || !APP.settings.gasUrl) return;
+  try {
+    const data = await gasRequest('getReminders');
+    if (data.reminders && Array.isArray(data.reminders)) {
+      for (const r of data.reminders) {
+        // Normalize boolean done field from sheet string
+        r.done = r.done === 'true' || r.done === true;
+        await dbPut(STORES.reminders, r);
+      }
+    }
+  } catch (e) {
+    console.warn('Reminder sync failed:', e.message);
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1356,6 +1417,17 @@ async function handleSaveReminder() {
   }
 
   await dbPut(STORES.reminders, reminder);
+
+  if (APP.online && APP.settings.gasUrl) {
+    try {
+      await gasRequest('saveReminder', { ...reminder, done: String(reminder.done) });
+    } catch {
+      await upsertPendingItem('saveReminder', reminder.id, { ...reminder, done: String(reminder.done) });
+    }
+  } else {
+    await upsertPendingItem('saveReminder', reminder.id, { ...reminder, done: String(reminder.done) });
+  }
+
   toast('Reminder saved ✓', 'success');
   closeReminderModal();
   await renderProfileReminders(studentId);
@@ -1367,8 +1439,19 @@ async function handleReminderDone(id, done) {
   const r = await dbGet(STORES.reminders, id);
   if (!r) return;
   r.done = done;
-  r.completedAt = done ? new Date().toISOString() : null;
+  r.completedAt = done ? new Date().toISOString() : '';
   await dbPut(STORES.reminders, r);
+
+  if (APP.online && APP.settings.gasUrl) {
+    try {
+      await gasRequest('saveReminder', { ...r, done: String(r.done) });
+    } catch {
+      await upsertPendingItem('saveReminder', r.id, { ...r, done: String(r.done) });
+    }
+  } else {
+    await upsertPendingItem('saveReminder', r.id, { ...r, done: String(r.done) });
+  }
+
   toast(done ? 'Marked done ✓' : 'Reopened', 'success');
   if (APP.currentScreen === 'reminders') await renderRemindersScreen();
   if (APP.currentScreen === 'profile')   await renderProfileReminders(r.studentId);
@@ -1380,6 +1463,17 @@ async function handleDeleteReminder(id) {
   if (!r) return;
   if (!confirm('Delete this reminder?')) return;
   await dbDelete(STORES.reminders, id);
+
+  if (APP.online && APP.settings.gasUrl) {
+    try {
+      await gasRequest('deleteReminder', { id });
+    } catch {
+      await upsertPendingItem('deleteReminder', id, { id });
+    }
+  } else {
+    await upsertPendingItem('deleteReminder', id, { id });
+  }
+
   toast('Reminder deleted', 'success');
   if (APP.currentScreen === 'reminders') await renderRemindersScreen();
   if (APP.currentScreen === 'profile')   await renderProfileReminders(r.studentId);
@@ -1606,7 +1700,7 @@ async function init() {
   await loadSampleData();
   showScreen('dashboard');
   if (APP.online && APP.settings.autoSync !== false) {
-    setTimeout(async () => { await syncClasses(); syncPendingAttendance(); }, 2000);
+    setTimeout(async () => { await syncClasses(); await syncReminders(); syncPendingAttendance(); }, 2000);
   }
 }
 
