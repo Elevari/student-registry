@@ -554,3 +554,48 @@ select.ct-input option { background: var(--card); }
 
 /* ── Misc ────────────────────────────────────────────────── */
 .w-full { width: 100%; }
+
+/* ── Reminders ───────────────────────────────────────────── */
+.reminder-card {
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: var(--radius-md); padding: 12px 14px;
+  margin-bottom: 8px; position: relative; overflow: hidden;
+  animation: fadeUp .3s cubic-bezier(.22,1,.36,1) both;
+  transition: background var(--transition);
+}
+.reminder-card.overdue  { border-left: 3px solid var(--danger); }
+.reminder-card.due-today{ border-left: 3px solid var(--warn); }
+.reminder-card.upcoming { border-left: 3px solid var(--lime); }
+.reminder-card.done     { border-left: 3px solid #38384a; opacity: .55; }
+
+.reminder-top { display: flex; align-items: flex-start; gap: 10px; }
+.reminder-body { flex: 1; min-width: 0; }
+.reminder-text { font-family: var(--f-head); font-weight: 700; font-size: 13px; color: var(--t-pri); margin-bottom: 4px; }
+.reminder-text.done-text { text-decoration: line-through; color: var(--t-muted); }
+.reminder-student { font-size: 11px; color: var(--lime); font-weight: 300; margin-bottom: 4px; cursor: pointer; }
+.reminder-due { font-size: 11px; font-weight: 300; }
+.reminder-due.overdue   { color: var(--danger); }
+.reminder-due.due-today { color: var(--warn); }
+.reminder-due.upcoming  { color: var(--t-sec); }
+.reminder-due.done-due  { color: var(--t-muted); }
+
+.reminder-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.rem-btn {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; cursor: pointer; transition: var(--transition); color: var(--t-muted);
+}
+.rem-btn:hover { border-color: var(--border-e); color: var(--t-pri); }
+.rem-btn.done-btn:hover { background: rgba(200,240,78,.1); border-color: rgba(200,240,78,.3); color: var(--lime); }
+.rem-btn.del-btn:hover  { background: rgba(240,78,106,.1); border-color: rgba(240,78,106,.3); color: var(--danger); }
+
+/* filter buttons */
+.filter-btn {
+  font-family: var(--f-head); font-weight: 700;
+  font-size: .65rem; text-transform: uppercase; letter-spacing: .06em;
+  padding: 6px 14px; border-radius: 99px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  color: var(--t-muted); cursor: pointer; transition: var(--transition);
+}
+.filter-btn.active { background: rgba(200,240,78,.1); border-color: rgba(200,240,78,.3); color: var(--lime); }

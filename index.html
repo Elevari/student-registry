@@ -53,6 +53,10 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
       Classes
     </button>
+    <button class="tab" data-screen="reminders">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Reminders
+    </button>
     <button class="tab" data-screen="reports">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Reports
@@ -75,6 +79,9 @@
         <div class="stat-card"><div class="stat-val red" id="dash-absent">0</div><div class="stat-lbl">Absent today</div></div>
         <div class="stat-card"><div class="stat-val muted" id="dash-late">0</div><div class="stat-lbl">Unsynced</div></div>
       </div>
+
+      <div class="sec-label" id="dash-reminders-label" style="display:none">Follow-ups due</div>
+      <div id="dash-reminders-list"></div>
 
     </section>
 
@@ -159,9 +166,14 @@
       <div class="ct-card" style="margin-bottom:12px">
         <div class="field-group" style="margin-bottom:10px"><div class="field-lbl">General Notes</div><textarea id="pedit-notes" class="ct-input ct-textarea" placeholder="General notes…"></textarea></div>
         <div class="field-group" style="margin-bottom:10px"><div class="field-lbl">Instructor Observations</div><textarea id="pedit-observations" class="ct-input ct-textarea" placeholder="Progress, participation, concerns…"></textarea></div>
-        <div class="field-group" style="margin-bottom:14px"><div class="field-lbl">Follow-up Reminders</div><textarea id="pedit-followup" class="ct-input ct-textarea" placeholder="Actions, reminders…" style="min-height:70px"></textarea></div>
         <button class="btn-primary" id="btn-save-profile">Save Profile</button>
       </div>
+      <div class="sec-label" style="display:flex;align-items:center;justify-content:space-between">
+        Follow-up reminders
+        <button class="btn-primary btn-sm" id="btn-add-reminder">+ Add</button>
+      </div>
+      <div id="profile-reminders-list" style="margin-bottom:14px"></div>
+
       <div class="sec-label">Attendance history</div>
       <div class="ct-card"><div id="profile-history"></div></div>
     </section>
@@ -173,6 +185,21 @@
         <button class="btn-primary btn-sm" id="btn-add-class">+ Add Class</button>
       </div>
       <div id="classes-list"><div class="ct-spinner"></div></div>
+    </section>
+
+    <!-- REMINDERS -->
+    <section id="screen-reminders" class="screen">
+      <div class="screen-header">
+        <div class="sec-label" style="margin:0">Follow-ups <span class="count-badge" id="reminders-count">0</span></div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="filter-btn active" data-filter="pending" id="filter-pending">Pending</button>
+        <button class="filter-btn" data-filter="done" id="filter-done">Completed</button>
+        <button class="filter-btn" data-filter="all" id="filter-all">All</button>
+      </div>
+
+      <div id="reminders-list"><div class="ct-spinner"></div></div>
     </section>
 
     <!-- REPORTS -->
@@ -266,6 +293,28 @@
       <div class="field-group" style="margin-bottom:14px"><div class="field-lbl">Description</div><input type="text" id="class-desc-input" class="ct-input" placeholder="Optional description" /></div>
       <input type="hidden" id="class-edit-id" value="" />
       <button class="btn-primary" id="btn-confirm-class">Save Class</button>
+    </div>
+  </div>
+
+  <!-- ADD REMINDER SHEET -->
+  <div class="sheet-overlay" id="add-reminder-modal">
+    <div class="bottom-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">Add Follow-up — <span id="reminder-student-name"></span></div>
+        <button class="sheet-close" id="btn-close-reminder-modal">✕</button>
+      </div>
+      <div class="field-group" style="margin-bottom:10px">
+        <div class="field-lbl">Reminder</div>
+        <textarea id="reminder-text-input" class="ct-input ct-textarea" placeholder="e.g. Follow up on attendance, call parent, check assignment…" style="min-height:80px"></textarea>
+      </div>
+      <div class="field-group" style="margin-bottom:14px">
+        <div class="field-lbl">Due Date</div>
+        <input type="date" id="reminder-date-input" class="ct-input" />
+      </div>
+      <input type="hidden" id="reminder-student-id" value="" />
+      <input type="hidden" id="reminder-edit-id" value="" />
+      <button class="btn-primary" id="btn-confirm-reminder">Save Reminder</button>
     </div>
   </div>
 

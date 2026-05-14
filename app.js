@@ -10,8 +10,8 @@
    CONSTANTS & STATE
 ───────────────────────────────────────────────────────────── */
 const DB_NAME    = 'classtrack';
-const DB_VERSION = 6;
-const STORES     = { students: 'students', attendance: 'attendance', pending: 'pending', settings: 'settings', classes: 'classes' };
+const DB_VERSION = 7;
+const STORES     = { students: 'students', attendance: 'attendance', pending: 'pending', settings: 'settings', classes: 'classes', reminders: 'reminders' };
 
 
 /* ── DEBUG: call window.debugAttState() in browser console ── */
@@ -79,6 +79,11 @@ async function openDB() {
       }
       if (!db.objectStoreNames.contains(STORES.classes)) {
         db.createObjectStore(STORES.classes, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORES.reminders)) {
+        const r = db.createObjectStore(STORES.reminders, { keyPath: 'id' });
+        r.createIndex('studentId', 'studentId', { unique: false });
+        r.createIndex('dueDate',   'dueDate',   { unique: false });
       }
     };
     req.onsuccess = e => resolve(e.target.result);
@@ -256,6 +261,7 @@ async function syncRoster() {
       await renderAttendanceList();
     }
     refreshDashboard();
+  renderDashboardReminders();
   } catch (err) {
     console.error('[Sync] Failed:', err);
     setSyncState('online', 'Online');
@@ -439,6 +445,7 @@ function showScreen(name) {
   if (name === 'students')   renderStudentList();
   if (name === 'reports')    renderReports();
   if (name === 'settings')   renderSettings();
+  if (name === 'reminders')  renderRemindersScreen();
   if (name === 'classes')    renderClasses();
 }
 
@@ -478,6 +485,7 @@ async function refreshDashboard() {
   document.getElementById('dash-present').textContent = todayAtt.filter(a => a.status === 'P').length;
   document.getElementById('dash-absent').textContent  = todayAtt.filter(a => a.status === 'A').length;
   document.getElementById('dash-late').textContent    = pending.length;
+  renderDashboardReminders();
   document.getElementById('dash-date').textContent    = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
 
 
@@ -763,11 +771,14 @@ async function showProfile(studentId) {
   });
   document.getElementById('pedit-notes').value        = getField(student, 'notes');
   document.getElementById('pedit-observations').value = getField(student, 'observations');
-  document.getElementById('pedit-followup').value     = getField(student, 'followup');
+
 
   // Populate program select with classes from DB
   const programSel = document.getElementById('pedit-program');
   if (programSel) programSel.innerHTML = await getClassOptions(getField(student, 'program'));
+
+  // Reminders for this student
+  await renderProfileReminders(studentId);
 
   // Attendance history
   const histEl = document.getElementById('profile-history');
@@ -791,7 +802,7 @@ async function handleSaveProfile() {
   const sid = APP.profileStudentId;
   if (!sid) return;
   const fields = {};
-  ['name','gender','phone','email','program','workplace','notes','observations','followup'].forEach(f => {
+  ['name','gender','phone','email','program','workplace','notes','observations'].forEach(f => {
     const el = document.getElementById(`pedit-${f}`);
     if (el) fields[f] = el.value;
   });
@@ -1196,6 +1207,199 @@ async function syncClasses() {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   REMINDERS
+───────────────────────────────────────────────────────────── */
+let currentReminderFilter = 'pending';
+
+function reminderStatus(r) {
+  if (r.done) return 'done';
+  if (!r.dueDate) return 'upcoming';
+  const today = formatDate();
+  if (r.dueDate < today) return 'overdue';
+  if (r.dueDate === today) return 'due-today';
+  return 'upcoming';
+}
+
+function niceReminderDate(dateStr) {
+  if (!dateStr) return 'No due date';
+  const today    = formatDate();
+  const tomorrow = formatDate(new Date(Date.now() + 86400000));
+  if (dateStr === today)    return 'Due today';
+  if (dateStr === tomorrow) return 'Due tomorrow';
+  if (dateStr < today)      return 'Overdue · ' + niceDate(dateStr);
+  return 'Due ' + niceDate(dateStr);
+}
+
+function reminderCardHTML(r, studentName, showStudent = true) {
+  const status = reminderStatus(r);
+  const dueCls = r.done ? 'done-due' : status === 'overdue' ? 'overdue' : status === 'due-today' ? 'due-today' : 'upcoming';
+  return `<div class="reminder-card ${status}" data-rid="${r.id}">
+    <div class="reminder-top">
+      <div class="reminder-body">
+        <div class="reminder-text ${r.done ? 'done-text' : ''}">${escHtml(r.text)}</div>
+        ${showStudent ? `<div class="reminder-student" data-sid="${r.studentId}">👤 ${escHtml(studentName)}</div>` : ''}
+        <div class="reminder-due ${dueCls}">${niceReminderDate(r.dueDate)}</div>
+      </div>
+      <div class="reminder-actions">
+        ${!r.done ? `<button class="rem-btn done-btn" data-done="${r.id}" title="Mark done">✓</button>` : `<button class="rem-btn done-btn" data-undone="${r.id}" title="Reopen">↩</button>`}
+        <button class="rem-btn del-btn" data-del-reminder="${r.id}" title="Delete">✕</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function renderRemindersScreen() {
+  const list      = document.getElementById('reminders-list');
+  const reminders = await dbGetAll(STORES.reminders);
+  const students  = await dbGetAll(STORES.students);
+  const studentMap = Object.fromEntries(students.map(s => [s.id, s.name]));
+
+  let filtered = reminders;
+  if (currentReminderFilter === 'pending') filtered = reminders.filter(r => !r.done);
+  if (currentReminderFilter === 'done')    filtered = reminders.filter(r =>  r.done);
+
+  // Sort: overdue first, then due-today, then upcoming, then done
+  const order = { overdue:0, 'due-today':1, upcoming:2, done:3 };
+  filtered.sort((a,b) => {
+    const sa = reminderStatus(a), sb = reminderStatus(b);
+    if (order[sa] !== order[sb]) return order[sa] - order[sb];
+    return (a.dueDate||'').localeCompare(b.dueDate||'');
+  });
+
+  document.getElementById('reminders-count').textContent = reminders.filter(r => !r.done).length;
+
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">${currentReminderFilter === 'done' ? 'No completed reminders' : 'No pending reminders'}</div><div class="empty-sub">Add reminders from a student's profile</div></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(r => reminderCardHTML(r, studentMap[r.studentId] || 'Unknown', true)).join('');
+}
+
+async function renderProfileReminders(studentId) {
+  const el        = document.getElementById('profile-reminders-list');
+  if (!el) return;
+  const reminders = (await dbGetAll(STORES.reminders)).filter(r => r.studentId === studentId);
+  reminders.sort((a,b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    return (a.dueDate||'').localeCompare(b.dueDate||'');
+  });
+
+  if (!reminders.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--t-muted);padding:8px 0">No reminders yet — tap + Add to create one</div>';
+    return;
+  }
+  el.innerHTML = reminders.map(r => reminderCardHTML(r, '', false)).join('');
+}
+
+async function renderDashboardReminders() {
+  const listEl    = document.getElementById('dash-reminders-list');
+  const labelEl   = document.getElementById('dash-reminders-label');
+  if (!listEl || !labelEl) return;
+
+  const reminders  = await dbGetAll(STORES.reminders);
+  const students   = await dbGetAll(STORES.students);
+  const studentMap = Object.fromEntries(students.map(s => [s.id, s.name]));
+  const today      = formatDate();
+
+  // Show overdue + due today only
+  const urgent = reminders
+    .filter(r => !r.done && r.dueDate && r.dueDate <= today)
+    .sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+
+  if (!urgent.length) {
+    labelEl.style.display = 'none';
+    listEl.innerHTML = '';
+    return;
+  }
+
+  labelEl.style.display = 'block';
+  listEl.innerHTML = urgent.map(r => reminderCardHTML(r, studentMap[r.studentId] || 'Unknown', true)).join('');
+}
+
+function openAddReminderModal(studentId, studentName, editId = '') {
+  document.getElementById('reminder-student-id').value   = studentId;
+  document.getElementById('reminder-student-name').textContent = studentName;
+  document.getElementById('reminder-edit-id').value      = editId;
+  document.getElementById('reminder-text-input').value   = '';
+  document.getElementById('reminder-date-input').value   = '';
+
+  if (editId) {
+    dbGet(STORES.reminders, editId).then(r => {
+      if (r) {
+        document.getElementById('reminder-text-input').value = r.text    || '';
+        document.getElementById('reminder-date-input').value = r.dueDate || '';
+      }
+    });
+  }
+  document.getElementById('add-reminder-modal').classList.add('open');
+  setTimeout(() => document.getElementById('reminder-text-input').focus(), 300);
+}
+
+function closeReminderModal() {
+  document.getElementById('add-reminder-modal').classList.remove('open');
+}
+
+async function handleSaveReminder() {
+  const text      = document.getElementById('reminder-text-input').value.trim();
+  const dueDate   = document.getElementById('reminder-date-input').value;
+  const studentId = document.getElementById('reminder-student-id').value;
+  const editId    = document.getElementById('reminder-edit-id').value;
+  if (!text) { toast('Please enter a reminder', 'error'); return; }
+
+  const id       = editId || 'rem-' + Date.now().toString(36);
+  const reminder = { id, studentId, text, dueDate, done: false, createdAt: new Date().toISOString() };
+
+  if (editId) {
+    const existing = await dbGet(STORES.reminders, editId);
+    if (existing) reminder.done = existing.done;
+  }
+
+  await dbPut(STORES.reminders, reminder);
+  toast('Reminder saved ✓', 'success');
+  closeReminderModal();
+  await renderProfileReminders(studentId);
+  await renderDashboardReminders();
+  if (APP.currentScreen === 'reminders') await renderRemindersScreen();
+}
+
+async function handleReminderDone(id, done) {
+  const r = await dbGet(STORES.reminders, id);
+  if (!r) return;
+  r.done = done;
+  r.completedAt = done ? new Date().toISOString() : null;
+  await dbPut(STORES.reminders, r);
+  toast(done ? 'Marked done ✓' : 'Reopened', 'success');
+  if (APP.currentScreen === 'reminders') await renderRemindersScreen();
+  if (APP.currentScreen === 'profile')   await renderProfileReminders(r.studentId);
+  await renderDashboardReminders();
+}
+
+async function handleDeleteReminder(id) {
+  const r = await dbGet(STORES.reminders, id);
+  if (!r) return;
+  if (!confirm('Delete this reminder?')) return;
+  await dbDelete(STORES.reminders, id);
+  toast('Reminder deleted', 'success');
+  if (APP.currentScreen === 'reminders') await renderRemindersScreen();
+  if (APP.currentScreen === 'profile')   await renderProfileReminders(r.studentId);
+  await renderDashboardReminders();
+}
+
+function handleReminderListClick(e) {
+  const doneBtn    = e.target.closest('[data-done]');
+  const undoneBtn  = e.target.closest('[data-undone]');
+  const delBtn     = e.target.closest('[data-del-reminder]');
+  const studentLnk = e.target.closest('[data-sid]');
+  if (doneBtn)    { handleReminderDone(doneBtn.dataset.done, true);   return; }
+  if (undoneBtn)  { handleReminderDone(undoneBtn.dataset.undone, false); return; }
+  if (delBtn)     { handleDeleteReminder(delBtn.dataset.delReminder); return; }
+  if (studentLnk && studentLnk.classList.contains('reminder-student')) {
+    showProfile(studentLnk.dataset.sid);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
    EXPORT CSV
 ───────────────────────────────────────────────────────────── */
 async function exportCSV() {
@@ -1358,6 +1562,33 @@ function bindEvents() {
   });
 
 
+
+  // Reminders screen
+  document.getElementById('reminders-list').addEventListener('click', handleReminderListClick);
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentReminderFilter = btn.dataset.filter;
+      renderRemindersScreen();
+    });
+  });
+
+  // Add reminder from profile
+  document.getElementById('btn-add-reminder').addEventListener('click', async () => {
+    const sid  = APP.profileStudentId;
+    const s    = await dbGet(STORES.students, sid);
+    openAddReminderModal(sid, s ? s.name : 'Student');
+  });
+  document.getElementById('btn-close-reminder-modal').addEventListener('click', closeReminderModal);
+  document.getElementById('btn-confirm-reminder').addEventListener('click', handleSaveReminder);
+  document.getElementById('add-reminder-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('add-reminder-modal')) closeReminderModal();
+  });
+
+  // Reminders on profile and dashboard
+  document.getElementById('profile-reminders-list').addEventListener('click', handleReminderListClick);
+  document.getElementById('dash-reminders-list').addEventListener('click', handleReminderListClick);
 
   window.addEventListener('online',  handleOnline);
   window.addEventListener('offline', handleOffline);
