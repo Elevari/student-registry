@@ -2,8 +2,8 @@
    ClassTrack Service Worker  v1.0
    ============================================================ */
 
-const CACHE_NAME      = 'classtrack-v8';
-const DATA_CACHE_NAME = 'classtrack-data-v8';
+const CACHE_NAME      = 'classtrack-v9';
+const DATA_CACHE_NAME = 'classtrack-data-v9';
 
 const STATIC_ASSETS = [
   './',
@@ -18,9 +18,14 @@ const STATIC_ASSETS = [
 // ── Install ──────────────────────────────────────────────────
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => {
+      // Cache each asset individually so one failure doesn't block the rest
+      return Promise.allSettled(
+        STATIC_ASSETS.map(url =>
+          cache.add(url).catch(err => console.warn('[SW] Failed to cache:', url, err))
+        )
+      );
+    }).then(() => self.skipWaiting())
   );
 });
 
@@ -54,7 +59,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Static assets – cache first
+  // Static assets – cache first, fallback to network
   event.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached;
@@ -63,6 +68,9 @@ self.addEventListener('fetch', event => {
         const clone = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
         return response;
+      }).catch(() => {
+        // Return cached index.html for navigation requests when offline
+        if (request.mode === 'navigate') return caches.match('./index.html');
       });
     })
   );
@@ -76,7 +84,6 @@ self.addEventListener('sync', event => {
 });
 
 async function syncPendingData() {
-  // Notify all clients to attempt sync
   const clients = await self.clients.matchAll();
   clients.forEach(client => client.postMessage({ type: 'TRIGGER_SYNC' }));
 }
