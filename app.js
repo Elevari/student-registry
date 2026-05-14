@@ -282,7 +282,7 @@ async function syncRoster() {
     await syncReminders();
 
     toast('Synced ✓', 'success');
-    setSyncState('online', 'Online');
+    await updateSyncBadge();
     // Sync reminders from sheet
     await syncRemindersFromSheet();
 
@@ -443,20 +443,22 @@ async function upsertPendingItem(type, entityId, payload) {
 ───────────────────────────────────────────────────────────── */
 function setSyncState(state, label) {
   const badge = document.getElementById('sync-badge');
+  if (!badge) return;
   badge.className = state;
   badge.id = 'sync-badge';
+  const dot  = badge.querySelector('.dot');
   const span = badge.querySelector('span');
   if (span) span.textContent = label;
-  // Update dashboard sync bar color
-  const bar = document.getElementById('dash-sync-bar');
-  const dot = document.getElementById('dash-sync-dot');
-  const onlineBadge = document.getElementById('dash-online-badge');
-  if (bar) bar.style.background = state === 'offline' ? 'var(--danger)' : state === 'syncing' ? 'var(--warn)' : 'var(--lime)';
-  if (dot) dot.style.background = state === 'offline' ? 'var(--danger)' : state === 'syncing' ? 'var(--warn)' : 'var(--lime)';
-  if (onlineBadge) {
-    onlineBadge.textContent = label;
-    onlineBadge.className = 'badge ' + (state === 'offline' ? 'danger-badge' : state === 'syncing' ? 'orange-badge' : 'lime-badge');
-  }
+}
+
+async function updateSyncBadge() {
+  const pending = await dbGetAll(STORES.pending);
+  const count   = pending.length;
+  const state   = !APP.online ? 'offline' : count > 0 ? 'syncing' : 'online';
+  const label   = !APP.online
+    ? (count > 0 ? `Offline · ${count} unsynced` : 'Offline')
+    : count > 0 ? `${count} unsynced` : 'Online';
+  setSyncState(state, label);
 }
 
 function toast(msg, type = '') {
@@ -1636,16 +1638,29 @@ async function loadSampleData() {
 /* ─────────────────────────────────────────────────────────────
    CONNECTIVITY
 ───────────────────────────────────────────────────────────── */
-function handleOnline()  {
+async function handleOnline() {
   APP.online = true;
-  setSyncState('online', 'Online');
+  await updateSyncBadge();
   toast('Back online — syncing…', 'success');
-  if (APP.settings.autoSync !== false) syncPendingAttendance();
+  if (APP.settings.autoSync !== false && APP.settings.gasUrl) {
+    try {
+      setSyncState('syncing', 'Syncing…');
+      await syncPendingAttendance();
+      await syncRoster();
+      await syncClasses();
+      await syncRemindersFromSheet();
+      await updateSyncBadge();
+      refreshDashboard();
+    } catch (e) {
+      console.warn('Auto-sync failed:', e);
+      await updateSyncBadge();
+    }
+  }
 }
 function handleOffline() {
   APP.online = false;
-  setSyncState('offline', 'Offline');
-  toast('Offline — changes saved locally', '');
+  updateSyncBadge();
+  toast('You are offline — changes saved locally', '');
 }
 
 /* ─────────────────────────────────────────────────────────────
