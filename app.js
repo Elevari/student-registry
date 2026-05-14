@@ -1355,6 +1355,10 @@ async function syncClasses() {
     const data = await gasRequest('getClasses');
     if (data.classes && Array.isArray(data.classes)) {
       for (const cls of data.classes) await dbPut(STORES.classes, cls);
+      // Re-render if user is on the classes screen
+      if (APP.currentScreen === 'classes') renderClasses();
+      // Always refresh dropdowns
+      await populateClassSelect();
     }
   } catch {}
 }
