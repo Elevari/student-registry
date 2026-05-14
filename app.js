@@ -553,13 +553,14 @@ async function refreshDashboard() {
   if (dayEl)  dayEl.textContent  = today.toLocaleDateString('en-US', { weekday: 'long' });
   if (dateEl) dateEl.textContent = today.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  // Update reminder badge on home tile
+  // Update reminder badge — only show reminders due today or overdue
   const reminders = await dbGetAll(STORES.reminders);
-  const pendingCount = reminders.filter(r => !r.done).length;
+  const todayStr = formatDate();
+  const urgentCount = reminders.filter(r => !r.done && r.dueDate && r.dueDate <= todayStr).length;
   const badge = document.getElementById('ht-reminder-badge');
   if (badge) {
-    badge.textContent   = pendingCount;
-    badge.style.display = pendingCount > 0 ? 'flex' : 'none';
+    badge.textContent   = urgentCount;
+    badge.style.display = urgentCount > 0 ? 'flex' : 'none';
   }
 
 
@@ -1611,6 +1612,18 @@ async function saveSettings() {
   await saveSetting('gasUrl',   document.getElementById('set-gas-url').value.trim());
   await saveSetting('autoSync', document.getElementById('set-autosync').checked);
   toast('Settings saved ✓', 'success');
+
+  // Trigger a full sync immediately if GAS URL is set and we're online
+  if (APP.settings.gasUrl && APP.online) {
+    setTimeout(async () => {
+      setSyncState('syncing', 'Syncing…');
+      await syncRoster();
+      await syncClasses();
+      await syncRemindersFromSheet();
+      await syncPendingAttendance();
+      refreshDashboard();
+    }, 300);
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────
